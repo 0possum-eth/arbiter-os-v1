@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { appendEvent } from "../ledger/appendEvent";
+import { buildViews } from "../ledger/buildViews";
 import { emitReceipt } from "../receipts/emitReceipt";
 import type { HaltAndAskReceipt } from "../receipts/types";
 import { runTask } from "./taskRunner";
@@ -90,23 +92,6 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
 
   const nextTaskIndex = tasks.findIndex((task) => task.done !== true);
   if (nextTaskIndex === -1) {
-    const updatedEpic: EpicRecord = {
-      ...activeEpic,
-      done: true,
-      status: activeEpic.status || "done"
-    };
-
-    const updatedEpics = [...epics];
-    updatedEpics[epicIndex] = updatedEpic;
-
-    const updatedState: PrdState = {
-      ...prdState,
-      epics: updatedEpics
-    };
-
-    const updatedJson = `${JSON.stringify(updatedState, null, 2)}\n`;
-    await fs.promises.writeFile(prdPath, updatedJson, "utf8");
-
     return { type: "EPIC_COMPLETE", epicId: prdState.activeEpicId };
   }
 
@@ -133,22 +118,37 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
 
   const allTasksDone = updatedTasks.every((task) => task.done === true);
 
-  const updatedEpic: EpicRecord = {
-    ...activeEpic,
-    tasks: updatedTasks,
-    done: allTasksDone ? true : activeEpic.done,
-    status: allTasksDone ? "done" : activeEpic.status
-  };
-  const updatedEpics = [...epics];
-  updatedEpics[epicIndex] = updatedEpic;
-
-  const updatedState: PrdState = {
-    ...prdState,
-    epics: updatedEpics
-  };
-
-  const updatedJson = `${JSON.stringify(updatedState, null, 2)}\n`;
-  await fs.promises.writeFile(prdPath, updatedJson, "utf8");
+  const ledgerPath = path.join(rootDir, "docs", "arbiter", "_ledger", "prd.events.jsonl");
+  const now = new Date().toISOString();
+  for (const task of tasks) {
+    if (!task.id) continue;
+    await appendEvent(ledgerPath, {
+      ts: now,
+      op: "task_upsert",
+      id: task.id,
+      data: {
+        epicId: prdState.activeEpicId,
+        task: {
+          noop: task.noop,
+          requiresInput: task.requiresInput,
+          requiresInputReason: task.requiresInputReason
+        }
+      }
+    });
+  }
+  await appendEvent(ledgerPath, {
+    ts: now,
+    op: "epic_selected",
+    id: prdState.activeEpicId,
+    data: { epicId: prdState.activeEpicId }
+  });
+  await appendEvent(ledgerPath, {
+    ts: now,
+    op: "task_done",
+    id: nextTask.id,
+    data: { epicId: prdState.activeEpicId }
+  });
+  await buildViews(ledgerPath, path.join(rootDir, "docs", "arbiter"));
 
   await emitReceipt({
     type: "TASK_COMPLETED",

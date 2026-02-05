@@ -13,6 +13,7 @@ test("buildViews regenerates prd.json from events", async () => {
   await fs.promises.writeFile(
     ledgerPath,
     [
+      JSON.stringify({ ts: "t", op: "epic_selected", id: "EPIC-1", data: { epicId: "EPIC-1" } }),
       JSON.stringify({ ts: "t", op: "task_upsert", id: "TASK-1", data: { epicId: "EPIC-1" } }),
       JSON.stringify({ ts: "t", op: "task_done", id: "TASK-1", data: { epicId: "EPIC-1" } })
     ].join("\n") + "\n",
@@ -23,5 +24,6 @@ test("buildViews regenerates prd.json from events", async () => {
   await buildViews(ledgerPath, viewsDir);
 
   const prd = JSON.parse(await fs.promises.readFile(path.join(viewsDir, "prd.json"), "utf8"));
+  assert.equal(prd.activeEpicId, "EPIC-1");
   assert.equal(prd.epics[0].tasks[0].done, true);
 });

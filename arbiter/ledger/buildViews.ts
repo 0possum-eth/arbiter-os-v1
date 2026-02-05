@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { LedgerEvent } from "./events";
 
-type Epic = { id: string; tasks: Array<{ id: string; done: boolean }> };
+type Epic = { id: string; tasks: Array<{ id: string; done: boolean }>; done?: boolean; status?: string };
 
 export async function buildViews(ledgerPath: string, outDir: string) {
   const content = await fs.promises.readFile(ledgerPath, "utf8");
@@ -14,6 +14,7 @@ export async function buildViews(ledgerPath: string, outDir: string) {
     .map((line) => JSON.parse(line) as LedgerEvent);
 
   const epicMap = new Map<string, Epic>();
+  let activeEpicId: string | undefined;
 
   for (const event of events) {
     const epicId = (event.data?.epicId as string) || "unknown";
@@ -21,9 +22,13 @@ export async function buildViews(ledgerPath: string, outDir: string) {
       epicMap.set(epicId, { id: epicId, tasks: [] });
     }
     const epic = epicMap.get(epicId)!;
+    if (event.op === "epic_selected") {
+      activeEpicId = event.id;
+    }
     if (event.op === "task_upsert") {
       if (!epic.tasks.find((task) => task.id === event.id)) {
-        epic.tasks.push({ id: event.id, done: false });
+        const taskData = (event.data?.task as Record<string, unknown>) || {};
+        epic.tasks.push({ id: event.id, done: false, ...taskData });
       }
     }
     if (event.op === "task_done") {
@@ -32,7 +37,21 @@ export async function buildViews(ledgerPath: string, outDir: string) {
     }
   }
 
+  for (const epic of epicMap.values()) {
+    if (epic.tasks.length > 0) {
+      if (epic.tasks.every((task) => task.done)) {
+        epic.done = true;
+        epic.status = "done";
+      } else {
+        epic.done = false;
+      }
+    }
+  }
+
   await fs.promises.mkdir(outDir, { recursive: true });
-  const prd = { epics: Array.from(epicMap.values()) };
+  const prd = {
+    activeEpicId,
+    epics: Array.from(epicMap.values())
+  };
   await fs.promises.writeFile(path.join(outDir, "prd.json"), `${JSON.stringify(prd, null, 2)}\n`, "utf8");
 }
