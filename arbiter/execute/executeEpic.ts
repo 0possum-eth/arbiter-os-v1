@@ -5,6 +5,7 @@ import { appendEvent } from "../ledger/appendEvent";
 import { buildViews } from "../ledger/buildViews";
 import { emitReceipt } from "../receipts/emitReceipt";
 import type { HaltAndAskReceipt } from "../receipts/types";
+import { verifyReceipts } from "../verify/verifyReceipts";
 import { runTask } from "./taskRunner";
 
 type ExecuteEpicResult =
@@ -108,6 +109,21 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
   const taskResult = await runTask(nextTask as Record<string, unknown>);
   if (taskResult.type === "HALT_AND_ASK") {
     return halt(taskResult.reason, prdState.activeEpicId, nextTask.id);
+  }
+
+  const receiptsPath = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
+  if (!fs.existsSync(receiptsPath)) {
+    return halt("VERIFICATION_REQUIRED", prdState.activeEpicId, nextTask.id);
+  }
+
+  const receiptLines = (await fs.promises.readFile(receiptsPath, "utf8"))
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { receipt: { type: string; taskId?: string; passed?: boolean } });
+  const receipts = receiptLines.map((entry) => entry.receipt);
+  if (!verifyReceipts(receipts, nextTask.id)) {
+    return halt("VERIFICATION_REQUIRED", prdState.activeEpicId, nextTask.id);
   }
 
   const updatedTasks = [...tasks];

@@ -15,6 +15,24 @@ const readReceipts = async (receiptsPath: string) => {
     .map((line) => JSON.parse(line));
 };
 
+const seedVerifierReceipts = async (rootDir: string, taskIds: string[]) => {
+  const receiptsDir = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts");
+  await fs.promises.mkdir(receiptsDir, { recursive: true });
+  const receiptsPath = path.join(receiptsDir, "receipts.jsonl");
+
+  const entries = taskIds.flatMap((taskId) => [
+    { receipt: { type: "EXECUTOR_COMPLETED", taskId } },
+    { receipt: { type: "VERIFIER_SPEC", taskId, passed: true } },
+    { receipt: { type: "VERIFIER_QUALITY", taskId, passed: true } }
+  ]);
+
+  await fs.promises.writeFile(
+    receiptsPath,
+    entries.map((entry) => `${JSON.stringify(entry)}\n`).join(""),
+    "utf8"
+  );
+};
+
 test("runEpicAutopilot completes one task per run", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-"));
   const originalCwd = process.cwd();
@@ -50,6 +68,8 @@ test("runEpicAutopilot completes one task per run", async () => {
     };
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+    await seedVerifierReceipts(tempDir, ["TASK-1"]);
+    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
 
     const firstRun = await runEpicAutopilot();
     assert.equal(firstRun.type, "IN_PROGRESS");
@@ -152,6 +172,7 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
     resumeRaw.epics[0].tasks[0].requiresInput = false;
     resumeRaw.epics[0].tasks[0].requiresInputReason = undefined;
     await fs.promises.writeFile(prdPath, `${JSON.stringify(resumeRaw, null, 2)}\n`, "utf8");
+    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
 
     const secondRun = await runEpicAutopilot();
     assert.equal(secondRun.type, "IN_PROGRESS");
@@ -244,6 +265,7 @@ test("runEpicAutopilot completes a noop task", async () => {
     };
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+    await seedVerifierReceipts(tempDir, ["TASK-1"]);
 
     const result = await runEpicAutopilot();
     assert.equal(result.type, "FINALIZED");
