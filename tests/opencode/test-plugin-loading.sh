@@ -68,6 +68,21 @@ else
     exit 1
 fi
 
+# Test 5b: Check Arbiter OS plugin exists if present in repo
+echo "Test 5b: Checking arbiter-os plugin file..."
+if [ -f "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" ]; then
+    echo "  [PASS] arbiter-os plugin file present"
+    if node --check "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" 2>/dev/null; then
+        echo "  [PASS] arbiter-os plugin syntax is valid"
+    else
+        echo "  [FAIL] arbiter-os plugin has syntax errors"
+        exit 1
+    fi
+else
+    echo "  [FAIL] arbiter-os plugin file not found"
+    exit 1
+fi
+
 # Test 6: Verify personal test skill was created
 echo "Test 6: Checking test fixtures..."
 if [ -f "$HOME/.config/opencode/skills/personal-test/SKILL.md" ]; then

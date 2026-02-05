@@ -20,6 +20,9 @@ cp -r "$REPO_ROOT/skills" "$HOME/.config/opencode/superpowers/"
 # Copy plugin directory
 mkdir -p "$HOME/.config/opencode/superpowers/.opencode/plugins"
 cp "$REPO_ROOT/.opencode/plugins/superpowers.js" "$HOME/.config/opencode/superpowers/.opencode/plugins/"
+if [ -f "$REPO_ROOT/.opencode/plugins/arbiter-os.js" ]; then
+    cp "$REPO_ROOT/.opencode/plugins/arbiter-os.js" "$HOME/.config/opencode/superpowers/.opencode/plugins/"
+fi
 
 # Register plugin via symlink
 mkdir -p "$HOME/.config/opencode/plugins"
