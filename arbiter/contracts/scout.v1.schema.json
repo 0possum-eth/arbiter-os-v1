@@ -70,13 +70,21 @@
   "oneOf": [
     {
       "required": ["recommendation"],
-      "not": { "required": ["failureMode"] }
+      "properties": { "recommendation": {} },
+      "not": {
+        "required": ["failureMode"],
+        "properties": { "failureMode": {} }
+      }
     },
     {
       "required": ["failureMode"],
-      "not": { "required": ["recommendation"] },
+      "properties": { "failureMode": {} },
+      "not": {
+        "required": ["recommendation"],
+        "properties": { "recommendation": {} }
+      },
       "properties": {
-        "candidates": { "maxItems": 0 }
+        "candidates": { "type": "array", "maxItems": 0 }
       }
     }
   ],

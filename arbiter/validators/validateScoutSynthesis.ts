@@ -1,4 +1,5 @@
-import Ajv from "ajv";
+import Ajv from "ajv/dist/2020";
+import addFormats from "ajv-formats";
 import schema from "../contracts/scout.v1.schema.json";
 
 type ScoutContractViolationError = {
@@ -7,6 +8,7 @@ type ScoutContractViolationError = {
 };
 
 const ajv = new Ajv({ allErrors: true, strict: true });
+addFormats(ajv);
 const validate = ajv.compile(schema);
 
 const toViolation = (
