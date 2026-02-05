@@ -17,7 +17,7 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
   if (state.status === "NO_ACTIVE_EPIC") {
     await runBrainstorm();
     const scoutOutput = await runScout();
-    const decision = arbiterDecision(scoutOutput);
+    const decision = await arbiterDecision(scoutOutput);
 
     if (decision.status === "HALT_AND_ASK") {
       await emitReceipt(decision.receipt);

@@ -1,7 +1,10 @@
+import path from "node:path";
+
 import {
   validateScoutSynthesis,
   type ScoutContractViolationError
 } from "../validators/validateScoutSynthesis";
+import { activateEpic } from "../state/activateEpic";
 import type { ScoutContractViolationReceipt } from "../receipts/types";
 
 type ArbiterDecisionResult =
@@ -26,9 +29,38 @@ const isScoutContractViolation = (
   );
 };
 
-export function arbiterDecision(rawScoutOutput: unknown): ArbiterDecisionResult {
+export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterDecisionResult> {
   try {
-    const scoutSynthesis = validateScoutSynthesis(rawScoutOutput);
+    const scoutSynthesis = validateScoutSynthesis(rawScoutOutput) as {
+      candidates: Array<{ id: string; artifactsToTouch?: string[] }>;
+      recommendation: { candidateId: string };
+      failureMode?: unknown;
+    };
+
+    const candidate = scoutSynthesis.candidates.find(
+      (item) => item.id === scoutSynthesis.recommendation.candidateId
+    );
+
+    if (!candidate) {
+      return {
+        status: "HALT_AND_ASK",
+        receipt: {
+          type: "SCOUT_CONTRACT_VIOLATION",
+          errors: [{ message: "recommended candidate missing from list" }]
+        }
+      };
+    }
+
+    const taskIds = candidate.artifactsToTouch && candidate.artifactsToTouch.length > 0
+      ? candidate.artifactsToTouch
+      : [`${candidate.id}-TASK-1`];
+
+    const ledgerPath = path.join(process.cwd(), "docs", "arbiter", "_ledger", "prd.events.jsonl");
+    await activateEpic(ledgerPath, {
+      id: candidate.id,
+      tasks: taskIds.map((id) => ({ id, noop: true }))
+    });
+
     return { status: "OK", scoutSynthesis };
   } catch (error) {
     if (isScoutContractViolation(error)) {

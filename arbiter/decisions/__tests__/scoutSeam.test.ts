@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { arbiterDecision } from "../arbiterDecision";
 
-test("invalid scout payload halts with contract violation receipt", () => {
+test("invalid scout payload halts with contract violation receipt", async () => {
   const invalidPayload = {
     schemaVersion: "arbiter.scout.v1",
     metadata: {
@@ -28,7 +28,7 @@ test("invalid scout payload halts with contract violation receipt", () => {
     }
   };
 
-  const result = arbiterDecision(invalidPayload);
+  const result = await arbiterDecision(invalidPayload);
   assert.equal(result.status, "HALT_AND_ASK");
   assert.equal(result.receipt.type, "SCOUT_CONTRACT_VIOLATION");
   assert.ok(result.receipt.errors.length > 0);
