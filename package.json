@@ -1,0 +1,14 @@
+{
+  "name": "arbiter-os",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test \"arbiter/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^2.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
