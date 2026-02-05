@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "arbiter.scout.v1.schema.json",
+  "title": "ScoutSynthesisEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "metadata",
+    "summary",
+    "candidates"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "arbiter.scout.v1"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "scoutId", "generatedAt", "confidence"],
+      "properties": {
+        "runId": { "type": "string", "minLength": 1 },
+        "scoutId": { "type": "string", "minLength": 1 },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problemStatement", "constraints", "unknowns"],
+      "properties": {
+        "problemStatement": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CandidateEpic" }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "rationale"],
+      "properties": {
+        "candidateId": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "riskNotes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "failureMode": { "$ref": "#/$defs/ScoutFailure" }
+  },
+  "oneOf": [
+    {
+      "required": ["recommendation"],
+      "not": { "required": ["failureMode"] }
+    },
+    {
+      "required": ["failureMode"],
+      "not": { "required": ["recommendation"] },
+      "properties": {
+        "candidates": { "maxItems": 0 }
+      }
+    }
+  ],
+  "$defs": {
+    "CandidateEpic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "intent",
+        "scope",
+        "prerequisites",
+        "estimatedComplexity",
+        "artifactsToTouch",
+        "risks",
+        "disallowedActions"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "intent": { "type": "string", "minLength": 1 },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["included", "excluded"],
+          "properties": {
+            "included": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "excluded": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "estimatedComplexity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "artifactsToTouch": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "disallowedActions": {
+          "type": "array",
+          "maxItems": 0,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "ScoutFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "blockingUnknowns", "suggestedQuestions"],
+          "properties": {
+            "type": { "const": "INSUFFICIENT_INFORMATION" },
+            "blockingUnknowns": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "suggestedQuestions": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "reason"],
+          "properties": {
+            "type": { "const": "NO_ACTIONABLE_CANDIDATES" },
+            "reason": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}
