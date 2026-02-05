@@ -36,11 +36,13 @@ test("runEpicAutopilot completes one task per run", async () => {
           tasks: [
             {
               id: "TASK-1",
-              done: false
+              done: false,
+              noop: true
             },
             {
               id: "TASK-2",
-              done: false
+              done: false,
+              noop: true
             }
           ]
         }
@@ -112,11 +114,13 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
               id: "TASK-1",
               done: false,
               requiresInput: true,
-              requiresInputReason: "MISSING_API_KEY"
+              requiresInputReason: "MISSING_API_KEY",
+              noop: true
             },
             {
               id: "TASK-2",
-              done: false
+              done: false,
+              noop: true
             }
           ]
         }

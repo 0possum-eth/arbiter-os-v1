@@ -131,9 +131,13 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
     done: true
   };
 
+  const allTasksDone = updatedTasks.every((task) => task.done === true);
+
   const updatedEpic: EpicRecord = {
     ...activeEpic,
-    tasks: updatedTasks
+    tasks: updatedTasks,
+    done: allTasksDone ? true : activeEpic.done,
+    status: allTasksDone ? "done" : activeEpic.status
   };
   const updatedEpics = [...epics];
   updatedEpics[epicIndex] = updatedEpic;
@@ -151,6 +155,10 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
     epicId: prdState.activeEpicId,
     taskId: nextTask.id
   });
+
+  if (allTasksDone) {
+    return { type: "EPIC_COMPLETE", epicId: prdState.activeEpicId };
+  }
 
   return { type: "TASK_COMPLETED", epicId: prdState.activeEpicId, taskId: nextTask.id };
 }
