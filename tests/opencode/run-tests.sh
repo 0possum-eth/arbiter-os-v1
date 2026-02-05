@@ -61,6 +61,7 @@ done
 tests=(
     "test-plugin-loading.sh"
     "test-skills-core.sh"
+    "test-agents.sh"
 )
 
 # Integration tests (require OpenCode)
