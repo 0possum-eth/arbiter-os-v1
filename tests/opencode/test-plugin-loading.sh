@@ -85,8 +85,9 @@ fi
 
 # Test 5c: Verify arbiter-os plugin hooks are present
 echo "Test 5c: Checking arbiter-os plugin hooks..."
-if grep -q "tool.execute.before" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
-   grep -q "stop:" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
+if grep -q "\"tool.execute.before\"" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
+   grep -q "stop:" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
+   grep -q "experimental.session.compacting" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
     echo "  [PASS] arbiter-os plugin hooks present"
 else
     echo "  [FAIL] arbiter-os plugin hooks missing"
