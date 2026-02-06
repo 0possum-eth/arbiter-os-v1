@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { ReceiptPayload } from "./types";
 import { recordRunUpdate } from "../ledger/runs";
-import { getRunId } from "./runContext";
+import { markRunStarted } from "./runLifecycle";
 
 type ReceiptEnvelope = {
   ts: string;
@@ -13,7 +13,7 @@ type ReceiptEnvelope = {
 
 export async function emitReceipt(receipt: ReceiptPayload): Promise<void> {
   const rootDir = process.cwd();
-  const runId = getRunId();
+  const { runId } = markRunStarted();
   const ledgerDir = path.join(rootDir, "docs", "arbiter", "_ledger", "runs", runId);
   await fs.promises.mkdir(ledgerDir, { recursive: true });
 

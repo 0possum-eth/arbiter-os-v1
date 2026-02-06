@@ -10,6 +10,7 @@ import { runElectrician } from "../phases/electrician";
 import { runScout } from "../phases/scout";
 import { runUxCoordinator } from "../phases/uxCoordinator";
 import { emitReceipt } from "../receipts/emitReceipt";
+import { markRunCompleted, markRunStarted } from "../receipts/runLifecycle";
 import type { ReceiptPayload } from "../receipts/types";
 import { inspectState } from "../state/inspectState";
 
@@ -60,78 +61,83 @@ const getBundleLimit = async (): Promise<number> => {
 };
 
 export async function runEpicAutopilot(): Promise<RunEpicResult> {
-  const continuousMode = process.env.ARBITER_CONTINUOUS === "true";
-  const state = await inspectState();
+  markRunStarted();
+  try {
+    const continuousMode = process.env.ARBITER_CONTINUOUS === "true";
+    const state = await inspectState();
 
-  if (state.status === "NO_ACTIVE_EPIC") {
-    await runBrainstorm();
-    const scoutOutput = await runScout();
-    const decision = await arbiterDecision(scoutOutput);
+    if (state.status === "NO_ACTIVE_EPIC") {
+      await runBrainstorm();
+      const scoutOutput = await runScout();
+      const decision = await arbiterDecision(scoutOutput);
 
-    if (decision.status === "HALT_AND_ASK") {
-      await emitReceipt(decision.receipt);
-      return { type: "HALT_AND_ASK", receipt: decision.receipt };
-    }
-  }
-
-  let bundleLimit = await getBundleLimit();
-  let completedInRun = 0;
-
-  while (true) {
-    const result = await executeEpic();
-
-    if (result.type === "HALT_AND_ASK") {
-      await emitReceipt(result.receipt);
-      return { type: "HALT_AND_ASK", receipt: result.receipt };
-    }
-
-    if (result.type === "TASK_COMPLETED") {
-      completedInRun += 1;
-      if (!continuousMode && completedInRun >= bundleLimit) {
-        return { type: "IN_PROGRESS" };
+      if (decision.status === "HALT_AND_ASK") {
+        await emitReceipt(decision.receipt);
+        return { type: "HALT_AND_ASK", receipt: decision.receipt };
       }
-      continue;
     }
 
-    if (result.type === "PENDING_LEDGER") {
-      const ledgerPath = "docs/arbiter/_ledger/prd.events.jsonl";
-      const ledgerResult = await ledgerKeeper(ledgerPath, result.epicId, result.taskId);
-      if (ledgerResult.status === "HALT_AND_ASK") {
-        await emitReceipt({
-          type: "HALT_AND_ASK",
-          reason: ledgerResult.reason,
-          epicId: result.epicId,
-          taskId: result.taskId
-        });
-        return {
-          type: "HALT_AND_ASK",
-          receipt: {
+    let bundleLimit = await getBundleLimit();
+    let completedInRun = 0;
+
+    while (true) {
+      const result = await executeEpic();
+
+      if (result.type === "HALT_AND_ASK") {
+        await emitReceipt(result.receipt);
+        return { type: "HALT_AND_ASK", receipt: result.receipt };
+      }
+
+      if (result.type === "TASK_COMPLETED") {
+        completedInRun += 1;
+        if (!continuousMode && completedInRun >= bundleLimit) {
+          return { type: "IN_PROGRESS" };
+        }
+        continue;
+      }
+
+      if (result.type === "PENDING_LEDGER") {
+        const ledgerPath = "docs/arbiter/_ledger/prd.events.jsonl";
+        const ledgerResult = await ledgerKeeper(ledgerPath, result.epicId, result.taskId);
+        if (ledgerResult.status === "HALT_AND_ASK") {
+          await emitReceipt({
             type: "HALT_AND_ASK",
             reason: ledgerResult.reason,
             epicId: result.epicId,
             taskId: result.taskId
-          }
-        };
+          });
+          return {
+            type: "HALT_AND_ASK",
+            receipt: {
+              type: "HALT_AND_ASK",
+              reason: ledgerResult.reason,
+              epicId: result.epicId,
+              taskId: result.taskId
+            }
+          };
+        }
+
+        completedInRun += 1;
+        if (!continuousMode && completedInRun >= bundleLimit) {
+          return { type: "IN_PROGRESS" };
+        }
+        continue;
       }
 
-      completedInRun += 1;
-      if (!continuousMode && completedInRun >= bundleLimit) {
-        return { type: "IN_PROGRESS" };
+      if (result.type === "EPIC_COMPLETE") {
+        const next = await inspectState();
+        if (next.status === "NO_MORE_WORK") {
+          await runElectrician();
+          await runUxCoordinator();
+          await emitReceipt({ type: "RUN_FINALIZED" });
+          return { type: "FINALIZED" };
+        }
+        bundleLimit = await getBundleLimit();
+        completedInRun = 0;
+        continue;
       }
-      continue;
     }
-
-    if (result.type === "EPIC_COMPLETE") {
-      const next = await inspectState();
-      if (next.status === "NO_MORE_WORK") {
-        await runElectrician();
-        await runUxCoordinator();
-        await emitReceipt({ type: "RUN_FINALIZED" });
-        return { type: "FINALIZED" };
-      }
-      bundleLimit = await getBundleLimit();
-      completedInRun = 0;
-      continue;
-    }
+  } finally {
+    markRunCompleted();
   }
 }

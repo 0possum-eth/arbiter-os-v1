@@ -1,8 +1,3 @@
-let cachedFallbackRunId: string | null = null;
+import { getLifecycleRunId } from "./runLifecycle";
 
-export const getRunId = () => {
-  const envRunId = process.env.ARBITER_RUN_ID;
-  if (envRunId && envRunId.trim()) return envRunId.trim();
-  if (!cachedFallbackRunId) cachedFallbackRunId = "unknown";
-  return cachedFallbackRunId;
-};
+export const getRunId = () => getLifecycleRunId();
