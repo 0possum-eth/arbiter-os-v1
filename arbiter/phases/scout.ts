@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
+import { extractPrd } from "../scout/extractPrd";
 
 const readBullets = (lines: string[], header: string) => {
   const headerLine = `## ${header}`;
@@ -18,6 +19,9 @@ const readBullets = (lines: string[], header: string) => {
 };
 
 export async function runScout(): Promise<unknown> {
+  const prdOutput = await extractPrd();
+  if (prdOutput) return prdOutput;
+
   const rootDir = process.cwd();
   const brainstormPath = path.join(rootDir, "docs", "arbiter", "brainstorm.md");
   let contents: string;
