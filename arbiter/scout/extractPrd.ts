@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
+import { assertValidPhaseName, ingestSource, type SourceRecord } from "./sourceIngest";
 
 type PrdEpic = {
   id?: string;
@@ -28,6 +29,58 @@ type PrdMetadata = {
   problemStatement?: string;
   constraints?: unknown;
   unknowns?: unknown;
+};
+
+type ScoutSourceRef = Pick<SourceRecord, "source" | "hash" | "phase">;
+
+type ScoutTaskData = {
+  id: string;
+  title: string;
+  sourceRef: ScoutSourceRef;
+};
+
+type ScoutCandidate = {
+  id: string;
+  title: string;
+  intent: string;
+  scope: {
+    included: string[];
+    excluded: string[];
+  };
+  prerequisites: string[];
+  estimatedComplexity: "low" | "medium" | "high";
+  artifactsToTouch: string[];
+  taskData: ScoutTaskData[];
+  risks: string[];
+  disallowedActions: string[];
+};
+
+export type ScoutEnvelope = {
+  schemaVersion: "arbiter.scout.v1";
+  metadata: {
+    runId: string;
+    scoutId: string;
+    generatedAt: string;
+    confidence: "low" | "medium" | "high";
+    evidence: {
+      sources: SourceRecord[];
+    };
+  };
+  summary: {
+    problemStatement: string;
+    constraints: string[];
+    unknowns: string[];
+  };
+  candidates: ScoutCandidate[];
+  recommendation: {
+    candidateId: string;
+    rationale: string;
+  };
+};
+
+export type ExtractPrdOptions = {
+  baseDir?: string;
+  phase?: string;
 };
 
 const normalizeString = (value: unknown) => {
@@ -62,14 +115,16 @@ const toTaskStrings = (value: unknown): string[] => {
 const pickEpic = (metadata: PrdMetadata): PrdEpic | undefined =>
   metadata.epic ?? metadata.epics?.[0];
 
-export async function extractPrd(): Promise<unknown | null> {
-  const rootDir = process.cwd();
+export async function extractPrd(options: ExtractPrdOptions = {}): Promise<ScoutEnvelope | null> {
+  const rootDir = options.baseDir ?? process.cwd();
+  const phase = assertValidPhaseName(options.phase ?? "phase-01");
+  const prdSource = `docs/arbiter/reference/${phase}/PRD_metadata.json`;
   const prdPath = path.join(
     rootDir,
     "docs",
     "arbiter",
     "reference",
-    "phase-01",
+    phase,
     "PRD_metadata.json"
   );
 
@@ -132,13 +187,33 @@ export async function extractPrd(): Promise<unknown | null> {
       ? constraints.concat(taskStrings.map((task) => `task:${task}`))
       : constraints;
 
+  const sourceRef = await ingestSource({
+    source: prdSource,
+    phase,
+    content: raw,
+    baseDir: rootDir
+  });
+
+  const taskData = taskStrings.map((task, index) => ({
+    id: `${epicId}-TASK-${index + 1}`,
+    title: task,
+    sourceRef: {
+      source: sourceRef.source,
+      hash: sourceRef.hash,
+      phase: sourceRef.phase
+    }
+  }));
+
   return {
     schemaVersion: "arbiter.scout.v1",
     metadata: {
       runId: getRunId(),
       scoutId: `scout-${Date.now()}`,
       generatedAt: new Date().toISOString(),
-      confidence: "medium"
+      confidence: "medium",
+      evidence: {
+        sources: [sourceRef]
+      }
     },
     summary: {
       problemStatement,
@@ -157,6 +232,7 @@ export async function extractPrd(): Promise<unknown | null> {
         prerequisites: [],
         estimatedComplexity: "low",
         artifactsToTouch,
+        taskData,
         risks: [],
         disallowedActions: []
       }
