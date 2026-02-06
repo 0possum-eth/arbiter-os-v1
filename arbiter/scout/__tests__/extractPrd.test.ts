@@ -59,14 +59,10 @@ test("extractPrd maps PRD metadata to scout envelope", async () => {
     assert.equal(sourceEntries[0].source, "docs/arbiter/reference/phase-01/PRD_metadata.json");
     assert.equal(sourceEntries[0].hash.length, 64);
 
-    assert.deepEqual(scout.metadata.evidence.sources, sourceEntries);
-    assert.equal(scout.candidates[0].taskData.length, metadata.epic.tasks.length);
-    assert.equal(scout.candidates[0].taskData[0].title, metadata.epic.tasks[0]);
-    assert.deepEqual(scout.candidates[0].taskData[0].sourceRef, {
-      source: sourceEntries[0].source,
-      hash: sourceEntries[0].hash,
-      phase: sourceEntries[0].phase
-    });
+    assert.equal(scout.metadata.scoutId, `scout-${sourceEntries[0].hash.slice(0, 12)}`);
+    assert.equal(scout.metadata.generatedAt, "1970-01-01T00:00:00.000Z");
+    assert.equal("evidence" in scout.metadata, false);
+    assert.equal("taskData" in scout.candidates[0], false);
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

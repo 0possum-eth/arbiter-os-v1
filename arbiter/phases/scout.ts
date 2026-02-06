@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
 import { extractPrd } from "../scout/extractPrd";
+import { ingestResearch } from "../scout/researchIngest";
+import { synthesizePrd } from "../scout/synthesizePrd";
 
 const readBullets = (lines: string[], header: string) => {
   const headerLine = `## ${header}`;
@@ -21,6 +23,9 @@ const readBullets = (lines: string[], header: string) => {
 export async function runScout(): Promise<unknown> {
   const prdOutput = await extractPrd();
   if (prdOutput) return prdOutput;
+
+  const synthesizedExisting = await extractPrd({ metadataFileName: "PRD_scout_metadata.json" });
+  if (synthesizedExisting) return synthesizedExisting;
 
   const rootDir = process.cwd();
   const brainstormPath = path.join(rootDir, "docs", "arbiter", "brainstorm.md");
@@ -49,12 +54,55 @@ export async function runScout(): Promise<unknown> {
     ? constraints.concat(tasks.map((task) => `task:${task}`))
     : constraints;
 
+  const phase = "phase-01";
+  const sourceRecords = await ingestResearch({
+    baseDir: rootDir,
+    phase,
+    sources: [
+      {
+        source: "docs/arbiter/brainstorm.md#problem",
+        content: problem
+      },
+      {
+        source: "docs/arbiter/brainstorm.md#constraints",
+        content: constraints.join("\n")
+      },
+      {
+        source: "docs/arbiter/brainstorm.md#tasks",
+        content: tasks.join("\n")
+      }
+    ]
+  });
+
+  const synthesized = await synthesizePrd({
+    baseDir: rootDir,
+    phase,
+    label: "scout",
+    epicId: "EPIC-1",
+    epicTitle,
+    problemStatement: problem,
+    constraints,
+    unknowns,
+    tasks,
+    sourceRecords
+  });
+
+  const synthesizedOutput = await extractPrd({
+    baseDir: rootDir,
+    phase,
+    metadataFileName: synthesized.metadataFileName
+  });
+
+  if (synthesizedOutput) {
+    return synthesizedOutput;
+  }
+
   return {
     schemaVersion: "arbiter.scout.v1",
     metadata: {
       runId: getRunId(),
-      scoutId: `scout-${Date.now()}`,
-      generatedAt: new Date().toISOString(),
+      scoutId: `scout-${getRunId()}`,
+      generatedAt: "1970-01-01T00:00:00.000Z",
       confidence: "low"
     },
     summary: {
