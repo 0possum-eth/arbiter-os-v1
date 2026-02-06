@@ -2,7 +2,9 @@ import { arbiterDecision } from "../decisions/arbiterDecision";
 import { executeEpic } from "../execute/executeEpic";
 import { ledgerKeeper } from "../ledger/ledgerKeeper";
 import { runBrainstorm } from "../phases/brainstorm";
+import { runElectrician } from "../phases/electrician";
 import { runScout } from "../phases/scout";
+import { runUxCoordinator } from "../phases/uxCoordinator";
 import { emitReceipt } from "../receipts/emitReceipt";
 import type { ReceiptPayload } from "../receipts/types";
 import { inspectState } from "../state/inspectState";
@@ -65,6 +67,8 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
     if (result.type === "EPIC_COMPLETE") {
       const next = await inspectState();
       if (next.status === "NO_MORE_WORK") {
+        await runElectrician();
+        await runUxCoordinator();
         await emitReceipt({ type: "RUN_FINALIZED" });
         return { type: "FINALIZED" };
       }

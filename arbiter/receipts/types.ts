@@ -28,23 +28,37 @@ type TaskCompletedReceipt = {
   taskId: string;
 };
 
+type IntegrationCheckedReceipt = {
+  type: "INTEGRATION_CHECKED";
+};
+
+type UxSimulatedReceipt = {
+  type: "UX_SIMULATED";
+};
+
 export type ReceiptType =
   | ScoutContractViolationReceipt["type"]
   | HaltAndAskReceipt["type"]
   | RunFinalizedReceipt["type"]
   | EpicTasksDerivedReceipt["type"]
-  | TaskCompletedReceipt["type"];
+  | TaskCompletedReceipt["type"]
+  | IntegrationCheckedReceipt["type"]
+  | UxSimulatedReceipt["type"];
 export type ReceiptPayload =
   | ScoutContractViolationReceipt
   | HaltAndAskReceipt
   | RunFinalizedReceipt
   | EpicTasksDerivedReceipt
-  | TaskCompletedReceipt;
+  | TaskCompletedReceipt
+  | IntegrationCheckedReceipt
+  | UxSimulatedReceipt;
 
 export type {
   ScoutContractViolationReceipt,
   HaltAndAskReceipt,
   RunFinalizedReceipt,
   EpicTasksDerivedReceipt,
-  TaskCompletedReceipt
+  TaskCompletedReceipt,
+  IntegrationCheckedReceipt,
+  UxSimulatedReceipt
 };

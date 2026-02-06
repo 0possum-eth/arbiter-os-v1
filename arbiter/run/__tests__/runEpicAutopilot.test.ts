@@ -119,6 +119,14 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(typesAfterThird.filter((type) => type === "TASK_COMPLETED").length, 2);
     assert.equal(typesAfterThird.filter((type) => type === "RUN_FINALIZED").length, 1);
     assert.equal(typesAfterThird.filter((type) => type === "HALT_AND_ASK").length, 0);
+    const runFinalizedIndex = typesAfterThird.lastIndexOf("RUN_FINALIZED");
+    assert.ok(runFinalizedIndex >= 0);
+    const integrationIndex = typesAfterThird.indexOf("INTEGRATION_CHECKED");
+    const uxIndex = typesAfterThird.indexOf("UX_SIMULATED");
+    assert.ok(integrationIndex >= 0);
+    assert.ok(uxIndex >= 0);
+    assert.ok(integrationIndex < runFinalizedIndex);
+    assert.ok(uxIndex < runFinalizedIndex);
   } finally {
     process.chdir(originalCwd);
     if (originalRunId === undefined) {
