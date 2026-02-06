@@ -8,6 +8,17 @@ This guide covers the operational commands used during an Arbiter OS run in Open
 
 - Use `run-epic` to start or continue epic coordination
 - Keep all implementation work inside the `run-epic` loop so state, receipts, and ledger updates stay aligned
+- Command contract: [`commands/run-epic.md`](../../commands/run-epic.md)
+
+## Run-Epic + Trust Flow
+
+Use trust commands inside the `run-epic` loop before behavior-doc execution:
+
+1. `run-epic`
+2. `approve-brick <doc-path>`
+3. `mount-doc <doc-path>`
+4. `list-bricks`
+5. Continue the `run-epic` cycle with trusted mounted docs
 
 ## Trust Commands
 
