@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { approveDoc, isTrusted } from "./commands";
+import { canMountForExecution, classifyBrick } from "./policy";
 import { contextPack } from "../librarian/contextPack";
 
 type BrickEntry = {
@@ -31,21 +32,36 @@ export async function approveBrick(docPath: string): Promise<string> {
   return normalizedPath;
 }
 
-export async function mountDoc(docPath: string): Promise<string> {
+export type MountDocResult = {
+  packPath: string;
+  sourcePath: string;
+  brickType: "knowledge" | "behavior";
+  trusted: boolean;
+};
+
+export async function mountDoc(docPath: string): Promise<MountDocResult> {
   const normalizedPath = normalizeDocPath(docPath);
-  if (!(await isTrusted(normalizedPath))) {
+  const resolvedDocPath = path.resolve(normalizedPath);
+  const trusted = await isTrusted(normalizedPath);
+  const brickType = classifyBrick(normalizedPath);
+  if (!canMountForExecution(normalizedPath, trusted)) {
     throw new Error(`Doc not trusted: ${normalizedPath}`);
   }
   const packDir = path.join(process.cwd(), "docs", "arbiter", "context-packs");
   await fs.promises.mkdir(packDir, { recursive: true });
 
-  const docContent = await fs.promises.readFile(path.resolve(docPath), "utf8");
+  const docContent = await fs.promises.readFile(resolvedDocPath, "utf8");
   const packContent = await contextPack(docContent);
   const packName = `context-pack-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
   const packPath = path.join(packDir, packName);
   await fs.promises.writeFile(packPath, packContent, "utf8");
 
-  return normalizeDocPath(packPath);
+  return {
+    packPath: normalizeDocPath(packPath),
+    sourcePath: normalizedPath,
+    brickType,
+    trusted
+  };
 }
 
 export async function listBricks(): Promise<string[]> {

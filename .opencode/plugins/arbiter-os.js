@@ -4,6 +4,28 @@ import path from "node:path";
 import { isLedgerPath } from "../../arbiter/policy/ledgerGuard";
 import { getRoleFromEnv } from "../../arbiter/policy/roleContext";
 import { isTrusted } from "../../arbiter/trust/commands";
+import { canMountForExecution, classifyBrick } from "../../arbiter/trust/policy";
+
+const normalizeDocPath = (docPath) => docPath.trim().replace(/\\/g, "/");
+
+const toMountedDoc = (value) => {
+  if (typeof value === "string") {
+    return { path: value };
+  }
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const pathValue = [value.packPath, value.path, value.docPath, value.doc, value.contextDoc].find(
+    (item) => typeof item === "string"
+  );
+  if (typeof pathValue !== "string") {
+    return null;
+  }
+  const sourcePath = [value.sourcePath, value.sourceDocPath].find(
+    (item) => typeof item === "string"
+  );
+  return typeof sourcePath === "string" ? { path: pathValue, sourcePath } : { path: pathValue };
+};
 
 const extractTargets = (input) => {
   const args = input?.args;
@@ -14,32 +36,27 @@ const extractTargets = (input) => {
   return [];
 };
 
-const getToolName = (input) => {
-  if (typeof input?.name === "string") return input.name;
-  if (typeof input?.tool === "string") return input.tool;
-  if (typeof input?.tool?.name === "string") return input.tool.name;
-  return null;
-};
-
 const extractMountedDocs = (input) => {
   const args = input?.args;
   if (!args) return [];
   const docs = [];
-  if (typeof args.doc === "string") docs.push(args.doc);
-  if (typeof args.docPath === "string") docs.push(args.docPath);
-  if (typeof args.contextDoc === "string") docs.push(args.contextDoc);
-  if (Array.isArray(args.docs)) docs.push(...args.docs.filter((item) => typeof item === "string"));
+  const singleValues = [args.doc, args.docPath, args.contextDoc];
+  for (const value of singleValues) {
+    const doc = toMountedDoc(value);
+    if (doc) docs.push(doc);
+  }
+  if (Array.isArray(args.docs)) docs.push(...args.docs.map((item) => toMountedDoc(item)).filter(Boolean));
   if (Array.isArray(args.docPaths)) {
-    docs.push(...args.docPaths.filter((item) => typeof item === "string"));
+    docs.push(...args.docPaths.map((item) => toMountedDoc(item)).filter(Boolean));
   }
   if (Array.isArray(args.mountedDocs)) {
-    docs.push(...args.mountedDocs.filter((item) => typeof item === "string"));
+    docs.push(...args.mountedDocs.map((item) => toMountedDoc(item)).filter(Boolean));
   }
   if (Array.isArray(args.contextDocs)) {
-    docs.push(...args.contextDocs.filter((item) => typeof item === "string"));
+    docs.push(...args.contextDocs.map((item) => toMountedDoc(item)).filter(Boolean));
   }
   if (Array.isArray(args.mounts)) {
-    docs.push(...args.mounts.filter((item) => typeof item === "string"));
+    docs.push(...args.mounts.map((item) => toMountedDoc(item)).filter(Boolean));
   }
   return docs;
 };
@@ -74,18 +91,21 @@ export const ArbiterOsPlugin = async () => ({
       }
     }
 
-    if (getToolName(input) === "runTask") {
-      const mountedDocs = extractMountedDocs(input);
-      if (mountedDocs.length > 0) {
-        const untrusted = [];
-        for (const docPath of mountedDocs) {
-          if (!(await isTrusted(docPath))) {
-            untrusted.push(docPath);
-          }
+    const mountedDocs = extractMountedDocs(input);
+    if (mountedDocs.length > 0) {
+      const blocked = [];
+      for (const mountedDoc of mountedDocs) {
+        const policyPath = normalizeDocPath(mountedDoc.sourcePath ?? mountedDoc.path);
+        const trusted = await isTrusted(policyPath);
+        const brickType = classifyBrick(policyPath);
+        const allowed =
+          brickType === "knowledge" ? true : canMountForExecution(policyPath, trusted);
+        if (!allowed) {
+          blocked.push(mountedDoc.path);
         }
-        if (untrusted.length > 0) {
-          throw new Error(`Untrusted docs mounted: ${untrusted.join(", ")}`);
-        }
+      }
+      if (blocked.length > 0) {
+        throw new Error(`Untrusted docs mounted: ${blocked.join(", ")}`);
       }
     }
   },

@@ -30,16 +30,19 @@ test("trust CLI commands update registry and list bricks", async () => {
     await assert.rejects(() => mountDoc(docA), /not trusted/i);
 
     const normalizedDocA = docA.replace(/\\/g, "/");
-    assert.equal(await approveBrick(docA), normalizedDocA);
+    assert.equal(await approveBrick(`  ${docA}  `), normalizedDocA);
 
     const raw = await fs.promises.readFile(trustPath, "utf8");
     const parsed = JSON.parse(raw) as { trusted?: string[] };
     assert.ok(parsed.trusted?.includes(normalizedDocA));
 
-    const packPath = await mountDoc(docA);
-    assert.notEqual(packPath, normalizedDocA);
-    assert.ok(packPath.includes("context-packs"));
-    await fs.promises.access(path.normalize(packPath));
+    const mounted = await mountDoc(` ${docA} `);
+    assert.notEqual(mounted.packPath, normalizedDocA);
+    assert.ok(mounted.packPath.includes("context-packs"));
+    assert.equal(mounted.sourcePath, normalizedDocA);
+    assert.equal(mounted.brickType, "behavior");
+    assert.equal(mounted.trusted, true);
+    await fs.promises.access(path.normalize(mounted.packPath));
 
     const listed = await listBricks();
     const normalizedDocB = docB.replace(/\\/g, "/");
