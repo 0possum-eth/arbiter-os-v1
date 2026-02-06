@@ -22,71 +22,82 @@ test("canMountForExecution allows only trusted behavior bricks", () => {
 });
 
 test("plugin enforces trust whenever mounted docs are provided", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "executor";
   const plugin = await ArbiterOsPlugin();
 
-  await assert.rejects(
-    () =>
-      plugin["tool.execute.before"]({
-        name: "runTask",
-        args: {
-          mountedDocs: [
-            {
-              packPath: "docs/arbiter/context-packs/behavior-pack.md",
-              brickType: "behavior",
-              trusted: false
-            }
-          ]
-        }
-      }),
-    /untrusted docs mounted/i
-  );
+  try {
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "runTask",
+          args: {
+            mountedDocs: [
+              {
+                packPath: "docs/arbiter/context-packs/behavior-pack.md",
+                brickType: "behavior",
+                trusted: false
+              }
+            ]
+          }
+        }),
+      /untrusted docs mounted/i
+    );
 
-  await assert.rejects(
-    () =>
-      plugin["tool.execute.before"]({
-        name: "buildContextPack",
-        args: {
-          mountedDocs: [
-            {
-              packPath: "docs/arbiter/context-packs/behavior-pack.md",
-              brickType: "behavior",
-              trusted: false
-            }
-          ]
-        }
-      }),
-    /untrusted docs mounted/i
-  );
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "buildContextPack",
+          args: {
+            mountedDocs: [
+              {
+                packPath: "docs/arbiter/context-packs/behavior-pack.md",
+                brickType: "behavior",
+                trusted: false
+              }
+            ]
+          }
+        }),
+      /untrusted docs mounted/i
+    );
 
-  await assert.rejects(
-    () =>
-      plugin["tool.execute.before"]({
-        name: "writeFile",
-        args: {
-          mountedDocs: [
-            {
-              packPath: "docs/arbiter/context-packs/behavior-pack.md",
-              brickType: "behavior",
-              trusted: false
-            }
-          ]
-        }
-      }),
-    /untrusted docs mounted/i
-  );
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: {
+            path: "docs/arbiter/notes/test.md",
+            mountedDocs: [
+              {
+                packPath: "docs/arbiter/context-packs/behavior-pack.md",
+                brickType: "behavior",
+                trusted: false
+              }
+            ]
+          }
+        }),
+      /untrusted docs mounted/i
+    );
 
-  await plugin["tool.execute.before"]({
-    name: "buildContextPack",
-    args: {
-      mountedDocs: [
-        {
-          packPath: "docs/arbiter/knowledge/knowledge-pack.md",
-          brickType: "knowledge",
-          trusted: false
-        }
-      ]
+    await plugin["tool.execute.before"]({
+      name: "buildContextPack",
+      args: {
+        mountedDocs: [
+          {
+            packPath: "docs/arbiter/knowledge/knowledge-pack.md",
+            brickType: "knowledge",
+            trusted: false
+          }
+        ]
+      }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
     }
-  });
+  }
 });
 
 test("plugin blocks untrusted behavior doc even when payload forges trusted=true", async () => {
@@ -163,5 +174,141 @@ test("plugin accepts trusted mounted behavior doc when sourcePath is trusted", a
       process.env.ARBITER_TRUST_PATH = originalTrustPath;
     }
     await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("plugin rejects write tools for read-only verifier roles", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "verifier-spec";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { path: "docs/arbiter/notes/todo.md" }
+        }),
+      /read-only role/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin allows read tools for read-only verifier roles", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "verifier-quality";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await plugin["tool.execute.before"]({
+      name: "readFile",
+      args: { path: "docs/arbiter/notes/todo.md" }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin restricts ledger-keeper writes to ledger and view paths", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "ledger-keeper";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { path: "docs/arbiter/notes/todo.md" }
+        }),
+      /ledger-keeper/i
+    );
+
+    await plugin["tool.execute.before"]({
+      name: "writeFile",
+      args: { path: "docs/arbiter/progress.txt" }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin rejects write tools for unknown roles", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  delete process.env.ARBITER_ROLE;
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { path: "docs/arbiter/notes/todo.md" }
+        }),
+      /unknown role/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin rejects pathless write tools", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "executor";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "bash",
+          args: { command: "npm test" }
+        }),
+      /requires explicit target paths/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin resolves write targets from filePath key", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "executor";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await plugin["tool.execute.before"]({
+      name: "writeFile",
+      args: { filePath: "docs/arbiter/notes/todo.md" }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
   }
 });

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isLedgerPath } from "../../arbiter/policy/ledgerGuard";
 import { getRoleFromEnv } from "../../arbiter/policy/roleContext";
+import { evaluateRolePolicy } from "../../arbiter/policy/rolePolicy";
 import { isTrusted } from "../../arbiter/trust/commands";
 import { canMountForExecution, classifyBrick } from "../../arbiter/trust/policy";
 
@@ -30,10 +30,23 @@ const toMountedDoc = (value) => {
 const extractTargets = (input) => {
   const args = input?.args;
   if (!args) return [];
-  if (typeof args.path === "string") return [args.path];
-  if (Array.isArray(args.paths)) return args.paths.filter((item) => typeof item === "string");
-  if (Array.isArray(args.files)) return args.files.filter((item) => typeof item === "string");
-  return [];
+
+  const collected = [];
+  const singlePathKeys = ["path", "filePath", "target", "outputPath", "destination", "dest"];
+  for (const key of singlePathKeys) {
+    if (typeof args[key] === "string") {
+      collected.push(args[key]);
+    }
+  }
+
+  const listPathKeys = ["paths", "files", "targets", "filePaths"];
+  for (const key of listPathKeys) {
+    if (Array.isArray(args[key])) {
+      collected.push(...args[key].filter((item) => typeof item === "string"));
+    }
+  }
+
+  return collected;
 };
 
 const extractMountedDocs = (input) => {
@@ -84,11 +97,10 @@ export const ArbiterOsPlugin = async () => ({
   },
   "tool.execute.before": async (input) => {
     const targets = extractTargets(input);
-    if (targets.some((target) => isLedgerPath(target))) {
-      const role = getRoleFromEnv();
-      if (role !== "ledger-keeper") {
-        throw new Error("Ledger writes must go through Ledger Keeper");
-      }
+    const role = getRoleFromEnv();
+    const roleDecision = evaluateRolePolicy({ role, toolName: input?.name, targets });
+    if (!roleDecision.allowed) {
+      throw new Error(roleDecision.reason || "Role policy denied tool execution");
     }
 
     const mountedDocs = extractMountedDocs(input);
