@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { ReceiptPayload } from "./types";
+import { recordRunUpdate } from "../ledger/runs";
+import { getRunId } from "./runContext";
 
 type ReceiptEnvelope = {
   ts: string;
@@ -9,24 +11,22 @@ type ReceiptEnvelope = {
   receipt: ReceiptPayload;
 };
 
-const resolveRunId = () => {
-  const envRunId = process.env.ARBITER_RUN_ID;
-  if (envRunId && envRunId.trim()) return envRunId.trim();
-  return "unknown";
-};
-
 export async function emitReceipt(receipt: ReceiptPayload): Promise<void> {
   const rootDir = process.cwd();
-  const ledgerDir = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts");
+  const runId = getRunId();
+  const ledgerDir = path.join(rootDir, "docs", "arbiter", "_ledger", "runs", runId);
   await fs.promises.mkdir(ledgerDir, { recursive: true });
 
   const envelope: ReceiptEnvelope = {
     ts: new Date().toISOString(),
-    runId: resolveRunId(),
+    runId,
     receipt
   };
 
   const line = `${JSON.stringify(envelope)}\n`;
-  const ledgerPath = path.join(ledgerDir, "receipts.jsonl");
-  await fs.promises.appendFile(ledgerPath, line, "utf8");
+  const receiptsPath = path.join(ledgerDir, "receipts.jsonl");
+  await fs.promises.appendFile(receiptsPath, line, "utf8");
+
+  const runsLedgerPath = path.join(rootDir, "docs", "arbiter", "_ledger", "runs.jsonl");
+  await recordRunUpdate(runsLedgerPath, runId);
 }

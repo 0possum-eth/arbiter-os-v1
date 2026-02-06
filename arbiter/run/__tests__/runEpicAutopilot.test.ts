@@ -36,8 +36,10 @@ const seedVerifierReceipts = async (rootDir: string, taskIds: string[]) => {
 test("runEpicAutopilot completes one task per run", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-"));
   const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
   process.chdir(tempDir);
-  process.env.ARBITER_RUN_ID = "run-e2e";
+  const runId = "run-e2e";
+  process.env.ARBITER_RUN_ID = runId;
 
   try {
     const prdDir = path.join(tempDir, "docs", "arbiter");
@@ -69,7 +71,6 @@ test("runEpicAutopilot completes one task per run", async () => {
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
     await seedVerifierReceipts(tempDir, ["TASK-1"]);
-    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
 
     const firstRun = await runEpicAutopilot();
     assert.equal(firstRun.type, "IN_PROGRESS");
@@ -83,13 +84,22 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(updatedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, true);
     assert.equal(updatedEpic?.tasks?.find((task) => task.id === "TASK-2")?.done, false);
 
-    const receiptsPath = path.join(tempDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      runId,
+      "receipts.jsonl"
+    );
     const receiptsAfterFirst = await readReceipts(receiptsPath);
     const typesAfterFirst = receiptsAfterFirst.map((entry) => entry.receipt.type);
     assert.equal(typesAfterFirst.filter((type) => type === "TASK_COMPLETED").length, 1);
     assert.equal(typesAfterFirst.filter((type) => type === "RUN_FINALIZED").length, 0);
     assert.equal(typesAfterFirst.filter((type) => type === "HALT_AND_ASK").length, 0);
 
+    await seedVerifierReceipts(tempDir, ["TASK-2"]);
     const secondRun = await runEpicAutopilot();
     assert.equal(secondRun.type, "IN_PROGRESS");
 
@@ -111,14 +121,21 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(typesAfterThird.filter((type) => type === "HALT_AND_ASK").length, 0);
   } finally {
     process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
   }
 });
 
 test("runEpicAutopilot halts on tasks requiring external input", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-halt-"));
   const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
   process.chdir(tempDir);
-  process.env.ARBITER_RUN_ID = "run-e2e-halt";
+  const runId = "run-e2e-halt";
+  process.env.ARBITER_RUN_ID = runId;
 
   try {
     const prdDir = path.join(tempDir, "docs", "arbiter");
@@ -164,7 +181,15 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
     const unchangedEpic = unchangedState.epics?.find((epic) => epic.id === "EPIC-1");
     assert.equal(unchangedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, false);
 
-    const receiptsPath = path.join(tempDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      runId,
+      "receipts.jsonl"
+    );
     const receiptsAfterFirst = await readReceipts(receiptsPath);
     const typesAfterFirst = receiptsAfterFirst.map((entry) => entry.receipt.type);
     assert.equal(typesAfterFirst.filter((type) => type === "HALT_AND_ASK").length, 1);
@@ -189,12 +214,18 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
     assert.equal(updatedEpic?.tasks?.find((task) => task.id === "TASK-2")?.done, false);
   } finally {
     process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
   }
 });
 
 test("runEpicAutopilot halts when task has no execution strategy", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-runner-"));
   const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
   process.chdir(tempDir);
   process.env.ARBITER_RUN_ID = "run-e2e-runner";
 
@@ -235,14 +266,21 @@ test("runEpicAutopilot halts when task has no execution strategy", async () => {
     assert.equal(unchangedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, false);
   } finally {
     process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
   }
 });
 
 test("runEpicAutopilot completes a noop task", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-noop-"));
   const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
   process.chdir(tempDir);
-  process.env.ARBITER_RUN_ID = "run-e2e-noop";
+  const runId = "run-e2e-noop";
+  process.env.ARBITER_RUN_ID = runId;
 
   try {
     const prdDir = path.join(tempDir, "docs", "arbiter");
@@ -283,7 +321,15 @@ test("runEpicAutopilot completes a noop task", async () => {
     const updatedEpic = updatedState.epics?.find((epic) => epic.id === "EPIC-1");
     assert.equal(updatedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, true);
 
-    const receiptsPath = path.join(tempDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      runId,
+      "receipts.jsonl"
+    );
     const receipts = await readReceipts(receiptsPath);
     const types = receipts.map((entry) => entry.receipt.type);
     assert.equal(types.filter((type) => type === "TASK_COMPLETED").length, 1);
@@ -291,5 +337,10 @@ test("runEpicAutopilot completes a noop task", async () => {
     assert.equal(types.filter((type) => type === "HALT_AND_ASK").length, 0);
   } finally {
     process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
   }
 });
