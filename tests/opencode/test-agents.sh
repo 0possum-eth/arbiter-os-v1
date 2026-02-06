@@ -13,6 +13,10 @@ required_agents=(
   "verifier-spec.md"
   "verifier-quality.md"
   "ledger-keeper.md"
+  "electrician.md"
+  "ux-coordinator.md"
+  "librarian.md"
+  "oracle.md"
 )
 
 for agent in "${required_agents[@]}"; do
