@@ -19,18 +19,15 @@ cp -r "$REPO_ROOT/skills" "$HOME/.config/opencode/superpowers/"
 
 # Copy plugin directory
 mkdir -p "$HOME/.config/opencode/superpowers/.opencode/plugins"
-cp "$REPO_ROOT/.opencode/plugins/superpowers.js" "$HOME/.config/opencode/superpowers/.opencode/plugins/"
-if [ -f "$REPO_ROOT/.opencode/plugins/arbiter-os.js" ]; then
-    cp "$REPO_ROOT/.opencode/plugins/arbiter-os.js" "$HOME/.config/opencode/superpowers/.opencode/plugins/"
-fi
+cp "$REPO_ROOT/.opencode/plugins/arbiter-os.js" "$HOME/.config/opencode/superpowers/.opencode/plugins/"
 
 # Register plugin via symlink
 mkdir -p "$HOME/.config/opencode/plugins"
-ln -sf "$HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js" \
-       "$HOME/.config/opencode/plugins/superpowers.js" || true
-if [ ! -e "$HOME/.config/opencode/plugins/superpowers.js" ]; then
-    cp "$HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js" \
-       "$HOME/.config/opencode/plugins/superpowers.js"
+ln -sf "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" \
+       "$HOME/.config/opencode/plugins/arbiter-os.js" || true
+if [ ! -e "$HOME/.config/opencode/plugins/arbiter-os.js" ]; then
+    cp "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" \
+       "$HOME/.config/opencode/plugins/arbiter-os.js"
 fi
 
 # Create test skills in different locations for testing
@@ -64,8 +61,8 @@ PROJECT_SKILL_MARKER_67890
 EOF
 
 echo "Setup complete: $TEST_HOME"
-echo "Plugin installed to: $HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js"
-echo "Plugin registered at: $HOME/.config/opencode/plugins/superpowers.js"
+echo "Plugin installed to: $HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"
+echo "Plugin registered at: $HOME/.config/opencode/plugins/arbiter-os.js"
 echo "Test project at: $TEST_HOME/test-project"
 
 # Helper function for cleanup (call from tests or trap)

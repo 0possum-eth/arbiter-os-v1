@@ -19,8 +19,8 @@ Create a symlink so OpenCode discovers the plugin:
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-rm -f ~/.config/opencode/plugins/superpowers.js
-ln -s ~/.config/opencode/superpowers/.opencode/plugins/superpowers.js ~/.config/opencode/plugins/superpowers.js
+rm -f ~/.config/opencode/plugins/arbiter-os.js
+ln -s ~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js ~/.config/opencode/plugins/arbiter-os.js
 ```
 
 ### 3. Symlink Skills
@@ -105,8 +105,8 @@ git pull
 
 ### Plugin not loading
 
-1. Check plugin symlink: `ls -l ~/.config/opencode/plugins/superpowers.js`
-2. Check source exists: `ls ~/.config/opencode/superpowers/.opencode/plugins/superpowers.js`
+1. Check plugin symlink: `ls -l ~/.config/opencode/plugins/arbiter-os.js`
+2. Check source exists: `ls ~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js`
 3. Check OpenCode logs for errors
 
 ### Skills not found

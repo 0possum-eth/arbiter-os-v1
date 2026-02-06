@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test: Plugin Loading
-# Verifies that the superpowers plugin loads correctly in OpenCode
+# Verifies that the canonical arbiter plugin loads correctly in OpenCode
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,19 +15,27 @@ trap cleanup_test_env EXIT
 
 # Test 1: Verify plugin file exists and is registered
 echo "Test 1: Checking plugin registration..."
-if [ -L "$HOME/.config/opencode/plugins/superpowers.js" ] || [ -f "$HOME/.config/opencode/plugins/superpowers.js" ]; then
+if [ -L "$HOME/.config/opencode/plugins/arbiter-os.js" ] || [ -f "$HOME/.config/opencode/plugins/arbiter-os.js" ]; then
     echo "  [PASS] Plugin registration exists"
 else
-    echo "  [FAIL] Plugin symlink not found at $HOME/.config/opencode/plugins/superpowers.js"
+    echo "  [FAIL] Plugin symlink not found at $HOME/.config/opencode/plugins/arbiter-os.js"
     exit 1
 fi
 
-# Verify symlink target exists
-if [ -f "$(readlink -f "$HOME/.config/opencode/plugins/superpowers.js")" ]; then
+# Verify symlink target exists (portable realpath check)
+if node -e "const fs=require('fs'); const target=fs.realpathSync(process.argv[1]); fs.accessSync(target);" "$HOME/.config/opencode/plugins/arbiter-os.js" 2>/dev/null; then
     echo "  [PASS] Plugin symlink target exists"
 else
     echo "  [FAIL] Plugin symlink target does not exist"
     exit 1
+fi
+
+# Ensure legacy plugin registration path is not used
+if [ -e "$HOME/.config/opencode/plugins/superpowers.js" ]; then
+    echo "  [FAIL] Legacy plugin registration found at $HOME/.config/opencode/plugins/superpowers.js"
+    exit 1
+else
+    echo "  [PASS] No legacy plugin registration detected"
 fi
 
 # Test 2: Verify lib/skills-core.js is in place
@@ -58,9 +66,9 @@ else
     exit 1
 fi
 
-# Test 5: Verify plugin JavaScript syntax (basic check)
+# Test 5: Verify canonical plugin JavaScript syntax (basic check)
 echo "Test 5: Checking plugin JavaScript syntax..."
-plugin_file="$HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js"
+plugin_file="$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"
 if node --check "$plugin_file" 2>/dev/null; then
     echo "  [PASS] Plugin JavaScript syntax is valid"
 else
@@ -68,23 +76,8 @@ else
     exit 1
 fi
 
-# Test 5b: Check Arbiter OS plugin exists if present in repo
-echo "Test 5b: Checking arbiter-os plugin file..."
-if [ -f "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" ]; then
-    echo "  [PASS] arbiter-os plugin file present"
-    if node --check "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" 2>/dev/null; then
-        echo "  [PASS] arbiter-os plugin syntax is valid"
-    else
-        echo "  [FAIL] arbiter-os plugin has syntax errors"
-        exit 1
-    fi
-else
-    echo "  [FAIL] arbiter-os plugin file not found"
-    exit 1
-fi
-
-# Test 5c: Verify arbiter-os plugin hooks are present
-echo "Test 5c: Checking arbiter-os plugin hooks..."
+# Test 5b: Verify canonical arbiter plugin hooks are present
+echo "Test 5b: Checking arbiter-os plugin hooks..."
 if grep -q "\"tool.execute.before\"" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
    grep -q "stop:" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
    grep -q "experimental.session.compacting" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
