@@ -5,11 +5,42 @@ export type TaskPacket = {
   contextPack: string;
   citations: string[];
   query: string;
+  strategyCommands?: StrategyCommand[];
+};
+
+export type StrategyCommand = {
+  command: string;
+  args?: string[];
 };
 
 type TaskPacketInput = {
   id?: string;
   query?: string;
+  strategyCommands?: unknown;
+};
+
+export const normalizeStrategyCommands = (value: unknown): StrategyCommand[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const commands: StrategyCommand[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const command = typeof record.command === "string" ? record.command.trim() : "";
+    if (command.length === 0) {
+      continue;
+    }
+    const args = Array.isArray(record.args)
+      ? record.args.filter((arg): arg is string => typeof arg === "string")
+      : undefined;
+    commands.push(args && args.length > 0 ? { command, args } : { command });
+  }
+
+  return commands.length > 0 ? commands : undefined;
 };
 
 const extractCitations = (pack: string) => {
@@ -33,6 +64,7 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
       : task.id ?? "UNKNOWN_TASK";
   const query = task.query && task.query.trim().length > 0 ? task.query : taskId;
   let pack = "## Context Pack";
+  const strategyCommands = normalizeStrategyCommands(task.strategyCommands);
   try {
     pack = await contextPack(query);
   } catch {
@@ -43,6 +75,7 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
     taskId,
     contextPack: pack,
     citations: extractCitations(pack),
-    query
+    query,
+    ...(strategyCommands ? { strategyCommands } : {})
   };
 }

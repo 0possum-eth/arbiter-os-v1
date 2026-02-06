@@ -271,3 +271,28 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
     }
   ]);
 });
+
+test("runTask halts when strategy execution throws", async () => {
+  const packet: TaskPacket = {
+    taskId: "TASK-STRATEGY-ERROR",
+    query: "ship task",
+    contextPack: "## Context Pack\n- [docs/spec.md#Spec] ship task",
+    citations: ["docs/spec.md#Spec"]
+  };
+
+  const result = await runTask(
+    { id: "TASK-STRATEGY-ERROR", query: "ship task" },
+    {
+      buildTaskPacket: async () => packet,
+      executeTaskStrategy: async () => {
+        throw new Error("strategy failed");
+      },
+      verifySpec: async () => ({ taskId: "TASK-STRATEGY-ERROR", passed: true }),
+      verifyQuality: async () => ({ taskId: "TASK-STRATEGY-ERROR", passed: true }),
+      emitReceipt: async () => {}
+    }
+  );
+
+  assert.equal(result.type, "HALT_AND_ASK");
+  assert.match(result.reason, /^TASK_STRATEGY_FAILED:/);
+});

@@ -7,7 +7,7 @@ import { verifySpec } from "../verify/specVerifier";
 import { verifyQuality } from "../verify/qualityVerifier";
 import type { TaskCompletionPacket, VerificationPacket } from "../contracts/packets";
 import type { ReceiptPayload } from "../receipts/types";
-import type { TaskPacket } from "./taskPacket";
+import { normalizeStrategyCommands, type StrategyCommand, type TaskPacket } from "./taskPacket";
 
 export type TaskExecutionResult =
   | { type: "TASK_DONE" }
@@ -19,6 +19,7 @@ type TaskRecord = {
   noop?: boolean;
   requiresIntegrationCheck?: boolean;
   uxSensitive?: boolean;
+  strategyCommands?: StrategyCommand[];
 };
 
 export type RunTaskDependencies = {
@@ -46,7 +47,8 @@ const normalizeTaskRecord = (task: Record<string, unknown>): TaskRecord => ({
   query: typeof task.query === "string" ? task.query : undefined,
   noop: task.noop === true,
   requiresIntegrationCheck: task.requiresIntegrationCheck === true,
-  uxSensitive: task.uxSensitive === true
+  uxSensitive: task.uxSensitive === true,
+  strategyCommands: normalizeStrategyCommands(task.strategyCommands)
 });
 
 export async function runTask(
@@ -72,7 +74,14 @@ export async function runTask(
     return { type: "HALT_AND_ASK", reason: "CONTEXT_PACK_REQUIRED" };
   }
 
-  const completionPacket = await deps.executeTaskStrategy(packet);
+  let completionPacket: TaskCompletionPacket;
+  try {
+    completionPacket = await deps.executeTaskStrategy(packet);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.trim() : "strategy error";
+    const detail = message.length > 60 ? `${message.slice(0, 60)}...` : message;
+    return { type: "HALT_AND_ASK", reason: `TASK_STRATEGY_FAILED: ${detail}` };
+  }
   await deps.emitReceipt({
     type: "EXECUTOR_COMPLETED",
     taskId: packet.taskId,
