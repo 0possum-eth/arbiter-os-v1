@@ -14,6 +14,12 @@ source "$SCRIPT_DIR/setup.sh"
 # Trap to cleanup on exit
 trap cleanup_test_env EXIT
 
+# Convert temp path for Node on Windows/Git Bash
+TEST_HOME_NODE="$TEST_HOME"
+if command -v cygpath >/dev/null 2>&1; then
+    TEST_HOME_NODE="$(cygpath -m "$TEST_HOME")"
+fi
+
 # Test 1: Test extractFrontmatter function
 echo "Test 1: Testing extractFrontmatter..."
 
@@ -64,7 +70,7 @@ function extractFrontmatter(filePath) {
     }
 }
 
-const result = extractFrontmatter('$TEST_HOME/test-skill/SKILL.md');
+const result = extractFrontmatter('$TEST_HOME_NODE/test-skill/SKILL.md');
 console.log(JSON.stringify(result));
 " 2>&1)
 
@@ -111,7 +117,7 @@ function stripFrontmatter(content) {
     return contentLines.join('\n').trim();
 }
 
-const content = fs.readFileSync('$TEST_HOME/test-skill/SKILL.md', 'utf8');
+const content = fs.readFileSync('$TEST_HOME_NODE/test-skill/SKILL.md', 'utf8');
 const stripped = stripFrontmatter(content);
 console.log(stripped);
 " 2>&1)
@@ -224,7 +230,7 @@ function findSkillsInDir(dir, sourceType, maxDepth = 3) {
     return skills;
 }
 
-const skills = findSkillsInDir('$TEST_HOME/skills-dir', 'test', 3);
+const skills = findSkillsInDir('$TEST_HOME_NODE/skills-dir', 'test', 3);
 console.log(JSON.stringify(skills, null, 2));
 " 2>&1)
 
@@ -313,8 +319,8 @@ function resolveSkillPath(skillName, superpowersDir, personalDir) {
     return null;
 }
 
-const superpowersDir = '$TEST_HOME/superpowers-skills';
-const personalDir = '$TEST_HOME/personal-skills';
+const superpowersDir = '$TEST_HOME_NODE/superpowers-skills';
+const personalDir = '$TEST_HOME_NODE/personal-skills';
 
 // Test 1: Shared skill should resolve to personal
 const shared = resolveSkillPath('shared-skill', superpowersDir, personalDir);
@@ -402,15 +408,15 @@ function checkForUpdates(repoDir) {
 }
 
 // Test 1: Repo without remote should return false (graceful error handling)
-const result1 = checkForUpdates('$TEST_HOME/test-repo');
+const result1 = checkForUpdates('$TEST_HOME_NODE/test-repo');
 console.log('NO_REMOTE:', result1);
 
 // Test 2: Non-existent directory should return false
-const result2 = checkForUpdates('$TEST_HOME/nonexistent');
+const result2 = checkForUpdates('$TEST_HOME_NODE/nonexistent');
 console.log('NONEXISTENT:', result2);
 
 // Test 3: Non-git directory should return false
-const result3 = checkForUpdates('$TEST_HOME');
+const result3 = checkForUpdates('$TEST_HOME_NODE');
 console.log('NOT_GIT:', result3);
 " 2>&1)
 
