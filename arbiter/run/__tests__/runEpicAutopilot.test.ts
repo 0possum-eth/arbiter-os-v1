@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { indexBricks } from "../../docs/indexBricks";
 import { runEpicAutopilot } from "../runEpicAutopilot";
 
 const readReceipts = async (receiptsPath: string) => {
@@ -234,12 +235,21 @@ test("runEpicAutopilot halts when task has no execution strategy", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-runner-"));
   const originalCwd = process.cwd();
   const originalRunId = process.env.ARBITER_RUN_ID;
+  const originalIndexPath = process.env.ARBITER_DOCS_INDEX_PATH;
   process.chdir(tempDir);
   process.env.ARBITER_RUN_ID = "run-e2e-runner";
 
   try {
     const prdDir = path.join(tempDir, "docs", "arbiter");
     await fs.promises.mkdir(prdDir, { recursive: true });
+
+    const sourceDir = path.join(tempDir, "docs", "sources");
+    await fs.promises.mkdir(sourceDir, { recursive: true });
+    const strategyDocPath = path.join(sourceDir, "strategy.md");
+    await fs.promises.writeFile(strategyDocPath, "# Strategy\nTASK-1 execution notes.", "utf8");
+    const indexPath = path.join(tempDir, "index.jsonl");
+    await indexBricks(sourceDir, indexPath);
+    process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
 
     const prdPath = path.join(prdDir, "prd.json");
     const initialState = {
@@ -278,6 +288,11 @@ test("runEpicAutopilot halts when task has no execution strategy", async () => {
       delete process.env.ARBITER_RUN_ID;
     } else {
       process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    if (originalIndexPath === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalIndexPath;
     }
   }
 });

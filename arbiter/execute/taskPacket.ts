@@ -4,6 +4,7 @@ export type TaskPacket = {
   taskId: string;
   contextPack: string;
   citations: string[];
+  query: string;
 };
 
 type TaskPacketInput = {
@@ -26,7 +27,10 @@ const extractCitations = (pack: string) => {
 };
 
 export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket> {
-  const taskId = task.id ?? "UNKNOWN_TASK";
+  const taskId =
+    typeof task.id === "string" && task.id.trim().length === 0
+      ? "UNKNOWN_TASK"
+      : task.id ?? "UNKNOWN_TASK";
   const query = task.query && task.query.trim().length > 0 ? task.query : taskId;
   let pack = "## Context Pack";
   try {
@@ -38,6 +42,7 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
   return {
     taskId,
     contextPack: pack,
-    citations: extractCitations(pack)
+    citations: extractCitations(pack),
+    query
   };
 }
