@@ -91,7 +91,10 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(typesAfterFirst.filter((type) => type === "HALT_AND_ASK").length, 0);
 
     const secondRun = await runEpicAutopilot();
-    assert.equal(secondRun.type, "FINALIZED");
+    assert.equal(secondRun.type, "IN_PROGRESS");
+
+    const thirdRun = await runEpicAutopilot();
+    assert.equal(thirdRun.type, "FINALIZED");
 
     const finalRaw = await fs.promises.readFile(prdPath, "utf8");
     const finalState = JSON.parse(finalRaw) as {
@@ -101,11 +104,11 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(finalEpic?.done, true);
     assert.equal(finalEpic?.tasks?.find((task) => task.id === "TASK-2")?.done, true);
 
-    const receiptsAfterSecond = await readReceipts(receiptsPath);
-    const typesAfterSecond = receiptsAfterSecond.map((entry) => entry.receipt.type);
-    assert.equal(typesAfterSecond.filter((type) => type === "TASK_COMPLETED").length, 2);
-    assert.equal(typesAfterSecond.filter((type) => type === "RUN_FINALIZED").length, 1);
-    assert.equal(typesAfterSecond.filter((type) => type === "HALT_AND_ASK").length, 0);
+    const receiptsAfterThird = await readReceipts(receiptsPath);
+    const typesAfterThird = receiptsAfterThird.map((entry) => entry.receipt.type);
+    assert.equal(typesAfterThird.filter((type) => type === "TASK_COMPLETED").length, 2);
+    assert.equal(typesAfterThird.filter((type) => type === "RUN_FINALIZED").length, 1);
+    assert.equal(typesAfterThird.filter((type) => type === "HALT_AND_ASK").length, 0);
   } finally {
     process.chdir(originalCwd);
   }
@@ -267,8 +270,11 @@ test("runEpicAutopilot completes a noop task", async () => {
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
     await seedVerifierReceipts(tempDir, ["TASK-1"]);
 
-    const result = await runEpicAutopilot();
-    assert.equal(result.type, "FINALIZED");
+    const firstRun = await runEpicAutopilot();
+    assert.equal(firstRun.type, "IN_PROGRESS");
+
+    const secondRun = await runEpicAutopilot();
+    assert.equal(secondRun.type, "FINALIZED");
 
     const updatedRaw = await fs.promises.readFile(prdPath, "utf8");
     const updatedState = JSON.parse(updatedRaw) as {

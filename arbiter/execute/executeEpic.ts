@@ -1,16 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { appendEvent } from "../ledger/appendEvent";
-import { buildViews } from "../ledger/buildViews";
 import { emitReceipt } from "../receipts/emitReceipt";
 import type { HaltAndAskReceipt } from "../receipts/types";
-import { verifyReceipts } from "../verify/verifyReceipts";
 import { runTask } from "./taskRunner";
 
 type ExecuteEpicResult =
   | { type: "EPIC_COMPLETE"; epicId: string }
   | { type: "TASK_COMPLETED"; epicId: string; taskId: string }
+  | { type: "PENDING_LEDGER"; epicId: string; taskId: string }
   | { type: "HALT_AND_ASK"; receipt: HaltAndAskReceipt };
 
 type EpicRecord = {
@@ -72,7 +70,7 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
 
   const activeEpic = epics[epicIndex];
   if (isEpicDone(activeEpic)) {
-    return halt("ACTIVE_EPIC_ALREADY_DONE");
+    return { type: "EPIC_COMPLETE", epicId: prdState.activeEpicId };
   }
 
   const tasks = Array.isArray(activeEpic.tasks) ? activeEpic.tasks : [];
@@ -111,21 +109,6 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
     return halt(taskResult.reason, prdState.activeEpicId, nextTask.id);
   }
 
-  const receiptsPath = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
-  if (!fs.existsSync(receiptsPath)) {
-    return halt("VERIFICATION_REQUIRED", prdState.activeEpicId, nextTask.id);
-  }
-
-  const receiptLines = (await fs.promises.readFile(receiptsPath, "utf8"))
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as { receipt: { type: string; taskId?: string; passed?: boolean } });
-  const receipts = receiptLines.map((entry) => entry.receipt);
-  if (!verifyReceipts(receipts, nextTask.id)) {
-    return halt("VERIFICATION_REQUIRED", prdState.activeEpicId, nextTask.id);
-  }
-
   const updatedTasks = [...tasks];
   updatedTasks[nextTaskIndex] = {
     ...nextTask,
@@ -134,47 +117,11 @@ export async function executeEpic(): Promise<ExecuteEpicResult> {
 
   const allTasksDone = updatedTasks.every((task) => task.done === true);
 
-  const ledgerPath = path.join(rootDir, "docs", "arbiter", "_ledger", "prd.events.jsonl");
-  const now = new Date().toISOString();
-  for (const task of tasks) {
-    if (!task.id) continue;
-    await appendEvent(ledgerPath, {
-      ts: now,
-      op: "task_upsert",
-      id: task.id,
-      data: {
-        epicId: prdState.activeEpicId,
-        task: {
-          noop: task.noop,
-          requiresInput: task.requiresInput,
-          requiresInputReason: task.requiresInputReason
-        }
-      }
-    });
-  }
-  await appendEvent(ledgerPath, {
-    ts: now,
-    op: "epic_selected",
-    id: prdState.activeEpicId,
-    data: { epicId: prdState.activeEpicId }
-  });
-  await appendEvent(ledgerPath, {
-    ts: now,
-    op: "task_done",
-    id: nextTask.id,
-    data: { epicId: prdState.activeEpicId }
-  });
-  await buildViews(ledgerPath, path.join(rootDir, "docs", "arbiter"));
-
   await emitReceipt({
     type: "TASK_COMPLETED",
     epicId: prdState.activeEpicId,
     taskId: nextTask.id
   });
 
-  if (allTasksDone) {
-    return { type: "EPIC_COMPLETE", epicId: prdState.activeEpicId };
-  }
-
-  return { type: "TASK_COMPLETED", epicId: prdState.activeEpicId, taskId: nextTask.id };
+  return { type: "PENDING_LEDGER", epicId: prdState.activeEpicId, taskId: nextTask.id };
 }

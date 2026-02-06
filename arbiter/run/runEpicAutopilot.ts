@@ -1,5 +1,6 @@
 import { arbiterDecision } from "../decisions/arbiterDecision";
 import { executeEpic } from "../execute/executeEpic";
+import { ledgerKeeper } from "../ledger/ledgerKeeper";
 import { runBrainstorm } from "../phases/brainstorm";
 import { runScout } from "../phases/scout";
 import { emitReceipt } from "../receipts/emitReceipt";
@@ -34,6 +35,30 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
     }
 
     if (result.type === "TASK_COMPLETED") {
+      return { type: "IN_PROGRESS" };
+    }
+
+    if (result.type === "PENDING_LEDGER") {
+      const ledgerPath = "docs/arbiter/_ledger/prd.events.jsonl";
+      const ledgerResult = await ledgerKeeper(ledgerPath, result.epicId, result.taskId);
+      if (ledgerResult.status === "HALT_AND_ASK") {
+        await emitReceipt({
+          type: "HALT_AND_ASK",
+          reason: ledgerResult.reason,
+          epicId: result.epicId,
+          taskId: result.taskId
+        });
+        return {
+          type: "HALT_AND_ASK",
+          receipt: {
+            type: "HALT_AND_ASK",
+            reason: ledgerResult.reason,
+            epicId: result.epicId,
+            taskId: result.taskId
+          }
+        };
+      }
+
       return { type: "IN_PROGRESS" };
     }
 
