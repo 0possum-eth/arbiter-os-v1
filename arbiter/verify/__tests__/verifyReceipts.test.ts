@@ -6,12 +6,12 @@ import { verifyReceipts } from "../verifyReceipts";
 test("verifyReceipts requires executor + verifiers", () => {
   const ok = verifyReceipts(
     [
-      { type: "EXECUTOR_COMPLETED", taskId: "TASK-1" },
-      { type: "VERIFIER_SPEC", taskId: "TASK-1", passed: true },
-      { type: "VERIFIER_QUALITY", taskId: "TASK-1", passed: true }
+      { id: "REC-EXECUTOR-1", receipt: { type: "EXECUTOR_COMPLETED", taskId: "TASK-1" } },
+      { id: "REC-SPEC-1", receipt: { type: "VERIFIER_SPEC", taskId: "TASK-1", passed: true } },
+      { id: "REC-QUALITY-1", receipt: { type: "VERIFIER_QUALITY", taskId: "TASK-1", passed: true } }
     ],
     "TASK-1"
   );
 
-  assert.equal(ok, true);
+  assert.deepEqual(ok, ["REC-EXECUTOR-1", "REC-SPEC-1", "REC-QUALITY-1"]);
 });

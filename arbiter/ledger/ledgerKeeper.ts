@@ -24,24 +24,47 @@ type PrdState = {
   epics?: EpicRecord[];
 };
 
+type Receipt = { type: string; taskId?: string; passed?: boolean };
+type ReceiptEnvelope = { id?: string; receiptId?: string; ts?: string; receipt: Receipt };
+
 export async function ledgerKeeper(
   ledgerPath: string,
   epicId: string,
   taskId: string
 ): Promise<LedgerKeeperResult> {
-  const rootDir = process.cwd();
+  const ledgerDir = path.dirname(ledgerPath);
+  const rootDir = path.resolve(ledgerDir, "..", "..", "..");
   const receiptsPath = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
   if (!fs.existsSync(receiptsPath)) {
     return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
   }
 
-  const receiptLines = (await fs.promises.readFile(receiptsPath, "utf8"))
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as { receipt: { type: string; taskId?: string; passed?: boolean } });
-  const receipts = receiptLines.map((entry) => entry.receipt);
-  if (!verifyReceipts(receipts, taskId)) {
+  let receiptLines: Record<string, unknown>[] = [];
+  try {
+    receiptLines = (await fs.promises.readFile(receiptsPath, "utf8"))
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+  } catch (error) {
+    return { status: "HALT_AND_ASK", reason: "RECEIPTS_INVALID" };
+  }
+  const receipts: ReceiptEnvelope[] = receiptLines.map((entry) => {
+    if (entry && typeof entry === "object" && "receipt" in entry) {
+      const envelope = entry as { receipt?: Receipt; id?: string; receiptId?: string; ts?: string };
+      if (envelope.receipt) {
+        return {
+          receipt: envelope.receipt,
+          id: envelope.id,
+          receiptId: envelope.receiptId,
+          ts: envelope.ts
+        };
+      }
+    }
+    return { receipt: entry as Receipt };
+  });
+  const evidence = verifyReceipts(receipts, taskId);
+  if (!evidence) {
     return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
   }
 
@@ -81,7 +104,7 @@ export async function ledgerKeeper(
     ts: now,
     op: "task_done",
     id: taskId,
-    data: { epicId }
+    data: { epicId, evidence }
   });
 
   await buildViews(ledgerPath, path.join(rootDir, "docs", "arbiter"));
