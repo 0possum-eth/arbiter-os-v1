@@ -41,6 +41,16 @@ Verify by asking: "do you have superpowers?"
 
 ## Usage
 
+### Arbiter OS
+
+After installation, use Arbiter OS as the orchestration layer:
+
+- Start each cycle with `run-epic`
+- Use trust gating commands (`approve-brick`, `mount-doc`, `list-bricks`) before execution when behavior docs are involved
+- Build task context from indexed references via context packs
+
+See full command examples in [docs/arbiter/USAGE.md](../docs/arbiter/USAGE.md).
+
 ### Finding Skills
 
 Use OpenCode's native `skill` tool to list available skills:

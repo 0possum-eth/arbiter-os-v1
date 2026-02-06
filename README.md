@@ -77,6 +77,13 @@ Fetch and follow instructions from https://raw.githubusercontent.com/obra/superp
 
 **Detailed docs:** [docs/README.opencode.md](docs/README.opencode.md)
 
+### Arbiter OS Quickstart
+
+- Install with the OpenCode instructions in [Install Steps](.opencode/INSTALL.md#installation-steps)
+- Start orchestration from [run-epic usage](docs/arbiter/USAGE.md#run-epic-usage)
+- Manage trusted execution docs with [trust commands](docs/arbiter/USAGE.md#trust-commands)
+- Build and mount retrieval output via [context packs](docs/arbiter/USAGE.md#context-packs)
+
 ## The Basic Workflow
 
 1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
