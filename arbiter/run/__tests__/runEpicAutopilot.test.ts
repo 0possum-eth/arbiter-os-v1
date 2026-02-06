@@ -16,18 +16,26 @@ const readReceipts = async (receiptsPath: string) => {
     .map((line) => JSON.parse(line));
 };
 
-const seedVerifierReceipts = async (rootDir: string, taskIds: string[]) => {
-  const receiptsDir = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts");
+const seedVerifierReceipts = async (rootDir: string, runId: string, taskIds: string[]) => {
+  const receiptsDir = path.join(rootDir, "docs", "arbiter", "_ledger", "runs", runId);
   await fs.promises.mkdir(receiptsDir, { recursive: true });
   const receiptsPath = path.join(receiptsDir, "receipts.jsonl");
 
   const entries = taskIds.flatMap((taskId) => [
-    { receipt: { type: "EXECUTOR_COMPLETED", taskId } },
-    { receipt: { type: "VERIFIER_SPEC", taskId, passed: true } },
-    { receipt: { type: "VERIFIER_QUALITY", taskId, passed: true } }
+    {
+      receipt: {
+        type: "EXECUTOR_COMPLETED",
+        taskId,
+        packet: { taskId, tests: ["arbiter/run/__tests__/runEpicAutopilot.test.ts"] }
+      }
+    },
+    { receipt: { type: "VERIFIER_SPEC", taskId, passed: true, packet: { taskId, passed: true } } },
+    {
+      receipt: { type: "VERIFIER_QUALITY", taskId, passed: true, packet: { taskId, passed: true } }
+    }
   ]);
 
-  await fs.promises.writeFile(
+  await fs.promises.appendFile(
     receiptsPath,
     entries.map((entry) => `${JSON.stringify(entry)}\n`).join(""),
     "utf8"
@@ -71,7 +79,7 @@ test("runEpicAutopilot completes one task per run", async () => {
     };
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
-    await seedVerifierReceipts(tempDir, ["TASK-1"]);
+    await seedVerifierReceipts(tempDir, runId, ["TASK-1"]);
 
     const firstRun = await runEpicAutopilot();
     assert.equal(firstRun.type, "IN_PROGRESS");
@@ -100,7 +108,7 @@ test("runEpicAutopilot completes one task per run", async () => {
     assert.equal(typesAfterFirst.filter((type) => type === "RUN_FINALIZED").length, 0);
     assert.equal(typesAfterFirst.filter((type) => type === "HALT_AND_ASK").length, 0);
 
-    await seedVerifierReceipts(tempDir, ["TASK-2"]);
+    await seedVerifierReceipts(tempDir, runId, ["TASK-2"]);
     const secondRun = await runEpicAutopilot();
     assert.equal(secondRun.type, "IN_PROGRESS");
 
@@ -177,7 +185,7 @@ test("runEpicAutopilot continuous mode finalizes in one run", async () => {
     };
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
-    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
+    await seedVerifierReceipts(tempDir, runId, ["TASK-1", "TASK-2"]);
 
     const run = await runEpicAutopilot();
     assert.equal(run.type, "FINALIZED");
@@ -291,7 +299,7 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
     resumeRaw.epics[0].tasks[0].requiresInput = false;
     resumeRaw.epics[0].tasks[0].requiresInputReason = undefined;
     await fs.promises.writeFile(prdPath, `${JSON.stringify(resumeRaw, null, 2)}\n`, "utf8");
-    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
+    await seedVerifierReceipts(tempDir, runId, ["TASK-1", "TASK-2"]);
 
     const secondRun = await runEpicAutopilot();
     assert.equal(secondRun.type, "IN_PROGRESS");
@@ -313,7 +321,7 @@ test("runEpicAutopilot halts on tasks requiring external input", async () => {
   }
 });
 
-test("runEpicAutopilot halts when task has no execution strategy", async () => {
+test("runEpicAutopilot advances when non-noop task has executor and verifier flow", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-runner-"));
   const originalCwd = process.cwd();
   const originalRunId = process.env.ARBITER_RUN_ID;
@@ -354,16 +362,29 @@ test("runEpicAutopilot halts when task has no execution strategy", async () => {
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
 
     const firstRun = await runEpicAutopilot();
-    assert.equal(firstRun.type, "HALT_AND_ASK");
-    assert.equal(firstRun.receipt.type, "HALT_AND_ASK");
-    assert.equal(firstRun.receipt.reason, "Task has no execution strategy yet");
+    assert.equal(firstRun.type, "IN_PROGRESS");
 
-    const unchangedRaw = await fs.promises.readFile(prdPath, "utf8");
-    const unchangedState = JSON.parse(unchangedRaw) as {
+    const updatedRaw = await fs.promises.readFile(prdPath, "utf8");
+    const updatedState = JSON.parse(updatedRaw) as {
       epics?: Array<{ id?: string; done?: boolean; tasks?: Array<{ id?: string; done?: boolean }> }>;
     };
-    const unchangedEpic = unchangedState.epics?.find((epic) => epic.id === "EPIC-1");
-    assert.equal(unchangedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, false);
+    const updatedEpic = updatedState.epics?.find((epic) => epic.id === "EPIC-1");
+    assert.equal(updatedEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, true);
+
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      "run-e2e-runner",
+      "receipts.jsonl"
+    );
+    const receipts = await readReceipts(receiptsPath);
+    const types = receipts.map((entry) => entry.receipt.type);
+    assert.ok(types.includes("EXECUTOR_COMPLETED"));
+    assert.ok(types.includes("VERIFIER_SPEC"));
+    assert.ok(types.includes("VERIFIER_QUALITY"));
   } finally {
     process.chdir(originalCwd);
     if (originalRunId === undefined) {
@@ -411,7 +432,7 @@ test("runEpicAutopilot completes a noop task", async () => {
     };
 
     await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
-    await seedVerifierReceipts(tempDir, ["TASK-1"]);
+    await seedVerifierReceipts(tempDir, runId, ["TASK-1"]);
 
     const firstRun = await runEpicAutopilot();
     assert.equal(firstRun.type, "IN_PROGRESS");

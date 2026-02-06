@@ -51,8 +51,7 @@ test("buildTaskPacket includes task id, context pack, citations, and query", asy
 
     const withCitationResult = await runTask({ id: "TASK-3", query: "spark frob" });
     assert.deepEqual(withCitationResult, {
-      type: "HALT_AND_ASK",
-      reason: "Task has no execution strategy yet"
+      type: "TASK_DONE"
     });
 
     const noopResult = await runTask({ id: "TASK-NOOP", noop: true, query: "" });
@@ -85,8 +84,7 @@ test("noop behavior does not change non-noop behavior", async () => {
 
     const nonNoop = await runTask({ id: "TASK-X", query: "spark" });
     assert.deepEqual(nonNoop, {
-      type: "HALT_AND_ASK",
-      reason: "Task has no execution strategy yet"
+      type: "TASK_DONE"
     });
 
     const noop = await runTask({ id: "TASK-X", noop: true, query: "spark" });

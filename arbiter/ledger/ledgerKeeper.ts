@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { appendEvent } from "./appendEvent";
 import { buildViews } from "./buildViews";
+import { readRunReceipts } from "../receipts/readRunReceipts";
 import { verifyReceipts } from "../verify/verifyReceipts";
 
 type LedgerKeeperResult =
@@ -16,6 +17,8 @@ type EpicRecord = {
     noop?: boolean;
     requiresInput?: boolean;
     requiresInputReason?: string;
+    requiresIntegrationCheck?: boolean;
+    uxSensitive?: boolean;
   }>;
 };
 
@@ -24,15 +27,6 @@ type PrdState = {
   epics?: EpicRecord[];
 };
 
-type Receipt = {
-  type: string;
-  taskId?: string;
-  passed?: boolean;
-  tests?: unknown;
-  files_changed?: unknown;
-};
-type ReceiptEnvelope = { id?: string; receiptId?: string; ts?: string; receipt: Receipt };
-
 export async function ledgerKeeper(
   ledgerPath: string,
   epicId: string,
@@ -40,38 +34,13 @@ export async function ledgerKeeper(
 ): Promise<LedgerKeeperResult> {
   const ledgerDir = path.dirname(ledgerPath);
   const rootDir = path.resolve(ledgerDir, "..", "..", "..");
-  const receiptsPath = path.join(rootDir, "docs", "arbiter", "_ledger", "receipts", "receipts.jsonl");
-  if (!fs.existsSync(receiptsPath)) {
+  const receiptResult = await readRunReceipts(rootDir);
+  if (receiptResult.status === "MISSING") {
     return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
   }
 
-  let receiptLines: Record<string, unknown>[] = [];
-  try {
-    receiptLines = (await fs.promises.readFile(receiptsPath, "utf8"))
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as Record<string, unknown>);
-  } catch (error) {
+  if (receiptResult.status === "INVALID") {
     return { status: "HALT_AND_ASK", reason: "RECEIPTS_INVALID" };
-  }
-  const receipts: ReceiptEnvelope[] = receiptLines.map((entry) => {
-    if (entry && typeof entry === "object" && "receipt" in entry) {
-      const envelope = entry as { receipt?: Receipt; id?: string; receiptId?: string; ts?: string };
-      if (envelope.receipt) {
-        return {
-          receipt: envelope.receipt,
-          id: envelope.id,
-          receiptId: envelope.receiptId,
-          ts: envelope.ts
-        };
-      }
-    }
-    return { receipt: entry as Receipt };
-  });
-  const evidence = verifyReceipts(receipts, taskId);
-  if (!evidence) {
-    return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
   }
 
   const prdPath = path.join(rootDir, "docs", "arbiter", "prd.json");
@@ -85,9 +54,17 @@ export async function ledgerKeeper(
   const epics = Array.isArray(prdState.epics) ? prdState.epics : [];
   const epic = epics.find((item) => item.id === epicId);
   const tasks = Array.isArray(epic?.tasks) ? epic?.tasks : [];
-  const isTaskInEpic = tasks.some((task) => task.id === taskId);
-  if (!isTaskInEpic) {
+  const selectedTask = tasks.find((task) => task.id === taskId);
+  if (!selectedTask) {
     return { status: "HALT_AND_ASK", reason: "TASK_NOT_IN_EPIC" };
+  }
+
+  const evidence = verifyReceipts(receiptResult.receipts, taskId, {
+    requiresIntegrationCheck: selectedTask.requiresIntegrationCheck === true,
+    uxSensitive: selectedTask.uxSensitive === true
+  });
+  if (!evidence) {
+    return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
   }
 
   const now = new Date().toISOString();
@@ -109,7 +86,9 @@ export async function ledgerKeeper(
         task: {
           noop: task.noop,
           requiresInput: task.requiresInput,
-          requiresInputReason: task.requiresInputReason
+          requiresInputReason: task.requiresInputReason,
+          requiresIntegrationCheck: task.requiresIntegrationCheck,
+          uxSensitive: task.uxSensitive
         }
       }
     });

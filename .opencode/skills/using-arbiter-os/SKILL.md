@@ -9,3 +9,5 @@ description: Operate Arbiter OS roles and entrypoints
 - Use ledger-first state and receipts
 - Never mark tasks done without verifier evidence
 - Route execution through the coordinator loop
+- Route execute-plan compatibility path into the Arbiter loop
+- Apply `docs/arbiter/agent-prompt.md` as the policy contract
