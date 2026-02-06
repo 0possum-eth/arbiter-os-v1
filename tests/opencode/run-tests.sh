@@ -62,6 +62,7 @@ tests=(
     "test-plugin-loading.sh"
     "test-skills-core.sh"
     "test-agents.sh"
+    "test-arbiter-skills.sh"
 )
 
 # Integration tests (require OpenCode)
