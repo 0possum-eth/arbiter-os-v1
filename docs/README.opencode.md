@@ -1,6 +1,6 @@
-# Superpowers for OpenCode
+# Arbiter OS for OpenCode
 
-Complete guide for using Superpowers with [OpenCode.ai](https://opencode.ai).
+Complete guide for using Arbiter OS with [OpenCode.ai](https://opencode.ai).
 
 ## Quick Install
 
@@ -20,7 +20,7 @@ Clone https://github.com/0possum-eth/arbiter-os-v1 to ~/.config/opencode/superpo
 ### macOS / Linux
 
 ```bash
-# 1. Install Superpowers (or update existing)
+# 1. Install Arbiter OS (or update existing)
 if [ -d ~/.config/opencode/superpowers ]; then
   cd ~/.config/opencode/superpowers && git pull
 else
@@ -237,9 +237,9 @@ OpenCode discovers skills from these locations:
 
 ## Features
 
-### Automatic Context Injection
+### Automatic Arbiter Context Injection
 
-The plugin automatically injects superpowers context via the `experimental.chat.system.transform` hook. This adds the "using-superpowers" skill content to the system prompt on every request.
+The plugin injects Arbiter OS run-loop guidance via `experimental.chat.system.transform`. This ensures the canonical `run-epic` orchestration entrypoint is present in system context.
 
 ### Native Skills Integration
 
@@ -258,11 +258,12 @@ Skills written for Claude Code are automatically adapted for OpenCode. The boots
 
 ### Plugin Structure
 
-**Location:** `~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js`
+**Location:** `~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js` (canonical plugin entrypoint)
 
 **Components:**
-- `experimental.chat.system.transform` hook for bootstrap injection
-- Reads and injects the "using-superpowers" skill content
+- `experimental.chat.system.transform` hook for Arbiter run-loop context
+- `tool.execute.before` trust and role-policy gates
+- `experimental.session.compacting` continuity summary output
 
 ### Skills
 
@@ -300,9 +301,9 @@ If you see `Cannot find module` errors on Windows:
 - **Cause:** Git Bash `ln -sf` copies files instead of creating symlinks
 - **Fix:** Use `mklink /J` directory junctions instead (see Windows installation steps)
 
-### Bootstrap not appearing
+### Arbiter context not appearing
 
-1. Verify using-superpowers skill exists: `ls ~/.config/opencode/superpowers/skills/using-superpowers/SKILL.md`
+1. Verify plugin exists: `ls ~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js`
 2. Check OpenCode version supports `experimental.chat.system.transform` hook
 3. Restart OpenCode after plugin changes
 
@@ -323,8 +324,8 @@ opencode run --print-logs "hello" 2>&1 | grep -i superpowers
 # Check skills are discoverable
 opencode run "use skill tool to list all skills" 2>&1 | grep -i superpowers
 
-# Check bootstrap injection
-opencode run "what superpowers do you have?"
+# Check Arbiter context injection
+opencode run "what is the canonical Arbiter OS entrypoint?"
 ```
 
-The agent should mention having superpowers and be able to list skills from `superpowers/`.
+The agent should identify `run-epic` as the canonical entrypoint and list skills from `superpowers/`.

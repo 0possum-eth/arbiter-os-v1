@@ -1,4 +1,4 @@
-# Installing Superpowers for OpenCode
+# Installing Arbiter OS for OpenCode
 
 ## Prerequisites
 
@@ -7,7 +7,7 @@
 
 ## Installation Steps
 
-### 1. Clone Superpowers
+### 1. Clone Arbiter OS
 
 ```bash
 git clone https://github.com/0possum-eth/arbiter-os-v1.git ~/.config/opencode/superpowers
@@ -15,7 +15,7 @@ git clone https://github.com/0possum-eth/arbiter-os-v1.git ~/.config/opencode/su
 
 ### 2. Register the Plugin
 
-Create a symlink so OpenCode discovers the plugin:
+Create a symlink so OpenCode discovers the canonical plugin entrypoint:
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
@@ -35,9 +35,9 @@ ln -s ~/.config/opencode/superpowers/skills ~/.config/opencode/skills/superpower
 
 ### 4. Restart OpenCode
 
-Restart OpenCode. The plugin will automatically inject superpowers context.
+Restart OpenCode. The plugin will automatically inject Arbiter OS run-loop context.
 
-Verify by asking: "do you have superpowers?"
+Verify by asking: "what is the canonical Arbiter OS entrypoint?" (expected: `run-epic`)
 
 ## Usage
 

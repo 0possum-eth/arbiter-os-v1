@@ -30,12 +30,13 @@ else
     exit 1
 fi
 
-# Ensure legacy plugin registration path is not used
-if [ -e "$HOME/.config/opencode/plugins/superpowers.js" ]; then
-    echo "  [FAIL] Legacy plugin registration found at $HOME/.config/opencode/plugins/superpowers.js"
-    exit 1
+# Ensure canonical plugin filename is used
+plugin_basename="$(basename "$HOME/.config/opencode/plugins/arbiter-os.js")"
+if [ "$plugin_basename" = "arbiter-os.js" ]; then
+    echo "  [PASS] Canonical plugin filename is in use"
 else
-    echo "  [PASS] No legacy plugin registration detected"
+    echo "  [FAIL] Unexpected plugin filename: $plugin_basename"
+    exit 1
 fi
 
 # Test 2: Verify lib/skills-core.js is in place
@@ -80,7 +81,8 @@ fi
 echo "Test 5b: Checking arbiter-os plugin hooks..."
 if grep -q "\"tool.execute.before\"" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
    grep -q "stop:" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
-   grep -q "experimental.session.compacting" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
+   grep -q "experimental.session.compacting" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
+   grep -q "run-epic as the canonical entrypoint" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
     echo "  [PASS] arbiter-os plugin hooks present"
 else
     echo "  [FAIL] arbiter-os plugin hooks missing"
