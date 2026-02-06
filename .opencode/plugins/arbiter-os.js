@@ -5,6 +5,7 @@ import { getRoleFromEnv } from "../../arbiter/policy/roleContext";
 import { evaluateRolePolicy } from "../../arbiter/policy/rolePolicy";
 import { isTrusted } from "../../arbiter/trust/commands";
 import { canMountForExecution, classifyBrick } from "../../arbiter/trust/policy";
+import { buildCompactionSummary } from "../../arbiter/memory/compactSummary";
 
 const normalizeDocPath = (docPath) => docPath.trim().replace(/\\/g, "/");
 
@@ -122,7 +123,7 @@ export const ArbiterOsPlugin = async () => ({
     }
   },
   "experimental.session.compacting": async () => ({
-    summary: "Arbiter OS active: run-epic coordinator enabled"
+    summary: await buildCompactionSummary()
   }),
   stop: async () => {
     if (isEpicIncomplete()) {
