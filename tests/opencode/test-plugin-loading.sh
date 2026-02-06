@@ -15,8 +15,8 @@ trap cleanup_test_env EXIT
 
 # Test 1: Verify plugin file exists and is registered
 echo "Test 1: Checking plugin registration..."
-if [ -L "$HOME/.config/opencode/plugins/superpowers.js" ]; then
-    echo "  [PASS] Plugin symlink exists"
+if [ -L "$HOME/.config/opencode/plugins/superpowers.js" ] || [ -f "$HOME/.config/opencode/plugins/superpowers.js" ]; then
+    echo "  [PASS] Plugin registration exists"
 else
     echo "  [FAIL] Plugin symlink not found at $HOME/.config/opencode/plugins/superpowers.js"
     exit 1
@@ -80,6 +80,16 @@ if [ -f "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" ]; 
     fi
 else
     echo "  [FAIL] arbiter-os plugin file not found"
+    exit 1
+fi
+
+# Test 5c: Verify arbiter-os plugin hooks are present
+echo "Test 5c: Checking arbiter-os plugin hooks..."
+if grep -q "tool.execute.before" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js" && \
+   grep -q "stop:" "$HOME/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js"; then
+    echo "  [PASS] arbiter-os plugin hooks present"
+else
+    echo "  [FAIL] arbiter-os plugin hooks missing"
     exit 1
 fi
 

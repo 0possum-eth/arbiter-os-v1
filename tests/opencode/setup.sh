@@ -27,7 +27,11 @@ fi
 # Register plugin via symlink
 mkdir -p "$HOME/.config/opencode/plugins"
 ln -sf "$HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js" \
+       "$HOME/.config/opencode/plugins/superpowers.js" || true
+if [ ! -e "$HOME/.config/opencode/plugins/superpowers.js" ]; then
+    cp "$HOME/.config/opencode/superpowers/.opencode/plugins/superpowers.js" \
        "$HOME/.config/opencode/plugins/superpowers.js"
+fi
 
 # Create test skills in different locations for testing
 
