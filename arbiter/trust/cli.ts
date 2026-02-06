@@ -42,19 +42,25 @@ export type MountDocResult = {
 export async function mountDoc(docPath: string): Promise<MountDocResult> {
   const normalizedPath = normalizeDocPath(docPath);
   const resolvedDocPath = path.resolve(normalizedPath);
-  const trusted = await isTrusted(normalizedPath);
+  const trustedForPolicy = await isTrusted(normalizedPath);
   const brickType = classifyBrick(normalizedPath);
-  if (!canMountForExecution(normalizedPath, trusted)) {
+  if (!canMountForExecution(normalizedPath, trustedForPolicy)) {
     throw new Error(`Doc not trusted: ${normalizedPath}`);
   }
   const packDir = path.join(process.cwd(), "docs", "arbiter", "context-packs");
   await fs.promises.mkdir(packDir, { recursive: true });
 
-  const docContent = await fs.promises.readFile(resolvedDocPath, "utf8");
-  const packContent = await contextPack(docContent);
+  await fs.promises.readFile(resolvedDocPath, "utf8");
+  const packContent = await contextPack(normalizedPath, {
+    includeTrustLabels: true,
+    requireTrusted: true,
+    allowedSourcePaths: [normalizedPath]
+  });
   const packName = `context-pack-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
   const packPath = path.join(packDir, packName);
   await fs.promises.writeFile(packPath, packContent, "utf8");
+
+  const trusted = await isTrusted(normalizedPath);
 
   return {
     packPath: normalizeDocPath(packPath),

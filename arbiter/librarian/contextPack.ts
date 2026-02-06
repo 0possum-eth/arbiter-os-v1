@@ -1,6 +1,9 @@
 import path from "node:path";
 
 import { retrieveBricks } from "../docs/retrieveBricks";
+import { isTrusted } from "../trust/commands";
+
+export const CONTEXT_PACK_HARD_CAP = 8_000;
 
 const getIndexPath = () => {
   const envPath = process.env.ARBITER_DOCS_INDEX_PATH;
@@ -17,14 +20,63 @@ const normalizeHeading = (heading: string) => {
 
 const normalizePath = (filePath: string) => filePath.replace(/\\/g, "/");
 
-export async function contextPack(query: string) {
+type ContextPackOptions = {
+  includeTrustLabels?: boolean;
+  requireTrusted?: boolean;
+  allowedSourcePaths?: string[];
+};
+
+const formatLine = (
+  source: string,
+  trustLabel: "trusted" | "untrusted",
+  content: string,
+  includeTrustLabels: boolean
+) => {
+  if (!includeTrustLabels) {
+    return `- [${source}] ${content}`;
+  }
+  return `- [${source}] (${trustLabel}) ${content}`;
+};
+
+export async function contextPack(query: string, options: ContextPackOptions = {}) {
+  const includeTrustLabels = options.includeTrustLabels === true;
+  const requireTrusted = options.requireTrusted === true;
+  const allowedSourcePaths = Array.isArray(options.allowedSourcePaths)
+    ? new Set(options.allowedSourcePaths.map((value) => normalizePath(value)))
+    : null;
   const indexPath = getIndexPath();
   const bricks = await retrieveBricks(indexPath, query, 2);
-  const lines = bricks.map((brick) => {
-    const heading = normalizeHeading(brick.heading);
-    const source = `${normalizePath(brick.path)}#${heading}`;
-    return `- [${source}] ${brick.content}`;
-  });
+  const lines = await Promise.all(
+    bricks.map(async (brick) => {
+      const normalizedSourcePath = normalizePath(brick.path);
+      if (allowedSourcePaths && !allowedSourcePaths.has(normalizedSourcePath)) {
+        return null;
+      }
 
-  return ["## Context Pack", ...lines].join("\n");
+      const shouldCheckTrust = includeTrustLabels || requireTrusted;
+      const trusted = shouldCheckTrust ? await isTrusted(brick.path) : true;
+      if (requireTrusted && !trusted) {
+        return null;
+      }
+
+      const heading = normalizeHeading(brick.heading);
+      const source = `${normalizedSourcePath}#${heading}`;
+      const trustLabel: "trusted" | "untrusted" = trusted ? "trusted" : "untrusted";
+      return formatLine(source, trustLabel, brick.content, includeTrustLabels);
+    })
+  );
+
+  let pack = "## Context Pack";
+  for (const line of lines) {
+    if (!line) {
+      continue;
+    }
+    const nextPack = `${pack}\n${line}`;
+    if (nextPack.length > CONTEXT_PACK_HARD_CAP) {
+      break;
+    }
+    pack = nextPack;
+  }
+
+  return pack;
 }
