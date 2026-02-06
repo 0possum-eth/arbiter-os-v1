@@ -10,14 +10,24 @@ const ensureDir = async (dir: string) => {
 
 const ensureFile = async (filePath: string, content = "") => {
   await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return;
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code !== "ENOENT") {
+      throw error;
+    }
+  }
   await fs.promises.writeFile(filePath, content, "utf8");
 };
 
 await ensureDir(path.join(arbiterDir, "reference", "_inbox"));
 await ensureDir(path.join(arbiterDir, "_ledger"));
+await ensureDir(path.join(arbiterDir, "_ledger", "runs"));
 await ensureDir(path.join(arbiterDir, "build-log"));
 
 await ensureFile(path.join(arbiterDir, "prd.json"), "{}\n");
 await ensureFile(path.join(arbiterDir, "progress.txt"), "");
 await ensureFile(path.join(arbiterDir, "_ledger", "prd.events.jsonl"), "");
-await ensureFile(path.join(arbiterDir, "_ledger", "receipts", "receipts.jsonl"), "");
+await ensureFile(path.join(arbiterDir, "_ledger", "runs.jsonl"), "");

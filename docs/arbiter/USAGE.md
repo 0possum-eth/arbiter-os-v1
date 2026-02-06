@@ -27,6 +27,14 @@ Context packs are generated from indexed document bricks and mounted into execut
 - Packs are synthesized from retrieval results so execution receives focused context
 - Use context packs after trust checks to keep runs both safe and relevant
 
+## Workspace Bootstrap
+
+`scripts/arbiter/arbiter-init-workspace.ts` initializes Arbiter workspace scaffolding for a new run.
+
+- Creates the run ledger base directory at `docs/arbiter/_ledger/runs/` (run-scoped subdirectories are created during execution)
+- Initializes run index stream at `docs/arbiter/_ledger/runs.jsonl`
+- Preserves baseline workspace files such as `docs/arbiter/prd.json` and `docs/arbiter/_ledger/prd.events.jsonl`
+
 ## Install Steps
 
 For OpenCode installation and plugin wiring, follow [.opencode/INSTALL.md](../../.opencode/INSTALL.md#installation-steps).

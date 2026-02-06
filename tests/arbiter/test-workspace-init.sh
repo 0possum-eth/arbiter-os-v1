@@ -12,8 +12,15 @@ node "$REPO_ROOT/node_modules/tsx/dist/cli.mjs" "$REPO_ROOT/scripts/arbiter/arbi
 
 test -d "docs/arbiter/reference/_inbox"
 test -d "docs/arbiter/_ledger"
+test -d "docs/arbiter/build-log"
 test -f "docs/arbiter/prd.json"
+test -f "docs/arbiter/progress.txt"
 test -f "docs/arbiter/_ledger/prd.events.jsonl"
-test -f "docs/arbiter/_ledger/receipts/receipts.jsonl"
+test -d "docs/arbiter/_ledger/runs"
+test -f "docs/arbiter/_ledger/runs.jsonl"
+
+printf '{"custom":true}\n' > "docs/arbiter/prd.json"
+node "$REPO_ROOT/node_modules/tsx/dist/cli.mjs" "$REPO_ROOT/scripts/arbiter/arbiter-init-workspace.ts"
+grep -Fq '"custom":true' "docs/arbiter/prd.json"
 
 echo "Workspace init test passed"
