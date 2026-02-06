@@ -5,12 +5,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd ../.. && pwd)"
 
 echo "========================================"
 echo " OpenCode Plugin Test Suite"
 echo "========================================"
 echo ""
-echo "Repository: $(cd ../.. && pwd)"
+echo "Repository: $REPO_ROOT"
 echo "Test time: $(date)"
 echo ""
 
@@ -30,6 +31,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --test|-t)
+            if [[ $# -lt 2 || -z "${2:-}" ]]; then
+                echo "Error: --test requires a test filename"
+                echo "Use --help for usage information"
+                exit 1
+            fi
             SPECIFIC_TEST="$2"
             shift 2
             ;;
@@ -45,6 +51,9 @@ while [[ $# -gt 0 ]]; do
             echo "Tests:"
             echo "  test-plugin-loading.sh  Verify plugin installation and structure"
             echo "  test-skills-core.sh     Test skills-core.js library functions"
+            echo "  test-agents.sh          Validate arbiter agent prompt contracts"
+            echo "  test-agent-contracts.sh Validate packet-schema references in prompts"
+            echo "  test-arbiter-skills.sh  Validate arbiter skill registration/content"
             echo "  test-tools.sh           Test use_skill and find_skills tools (integration)"
             echo "  test-priority.sh        Test skill priority resolution (integration)"
             exit 0
@@ -164,5 +173,14 @@ if [ $failed -gt 0 ]; then
     exit 1
 else
     echo "STATUS: PASSED"
+fi
+
+echo ""
+echo "Running readiness documentation gate..."
+if bash "$REPO_ROOT/tests/arbiter/test-doc-links.sh"; then
+    echo "Readiness documentation gate passed"
     exit 0
 fi
+
+echo "Readiness documentation gate failed"
+exit 1
