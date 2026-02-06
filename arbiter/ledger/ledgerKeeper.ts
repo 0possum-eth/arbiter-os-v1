@@ -24,7 +24,13 @@ type PrdState = {
   epics?: EpicRecord[];
 };
 
-type Receipt = { type: string; taskId?: string; passed?: boolean };
+type Receipt = {
+  type: string;
+  taskId?: string;
+  passed?: boolean;
+  tests?: unknown;
+  files_changed?: unknown;
+};
 type ReceiptEnvelope = { id?: string; receiptId?: string; ts?: string; receipt: Receipt };
 
 export async function ledgerKeeper(
@@ -69,11 +75,20 @@ export async function ledgerKeeper(
   }
 
   const prdPath = path.join(rootDir, "docs", "arbiter", "prd.json");
-  const raw = await fs.promises.readFile(prdPath, "utf8");
-  const prdState = JSON.parse(raw) as PrdState;
+  let prdState: PrdState;
+  try {
+    const raw = await fs.promises.readFile(prdPath, "utf8");
+    prdState = JSON.parse(raw) as PrdState;
+  } catch (error) {
+    return { status: "HALT_AND_ASK", reason: "PRD_INVALID" };
+  }
   const epics = Array.isArray(prdState.epics) ? prdState.epics : [];
   const epic = epics.find((item) => item.id === epicId);
   const tasks = Array.isArray(epic?.tasks) ? epic?.tasks : [];
+  const isTaskInEpic = tasks.some((task) => task.id === taskId);
+  if (!isTaskInEpic) {
+    return { status: "HALT_AND_ASK", reason: "TASK_NOT_IN_EPIC" };
+  }
 
   const now = new Date().toISOString();
   await appendEvent(ledgerPath, {
