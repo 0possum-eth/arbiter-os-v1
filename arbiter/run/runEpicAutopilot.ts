@@ -60,6 +60,7 @@ const getBundleLimit = async (): Promise<number> => {
 };
 
 export async function runEpicAutopilot(): Promise<RunEpicResult> {
+  const continuousMode = process.env.ARBITER_CONTINUOUS === "true";
   const state = await inspectState();
 
   if (state.status === "NO_ACTIVE_EPIC") {
@@ -86,7 +87,7 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
 
     if (result.type === "TASK_COMPLETED") {
       completedInRun += 1;
-      if (completedInRun >= bundleLimit) {
+      if (!continuousMode && completedInRun >= bundleLimit) {
         return { type: "IN_PROGRESS" };
       }
       continue;
@@ -114,7 +115,7 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
       }
 
       completedInRun += 1;
-      if (completedInRun >= bundleLimit) {
+      if (!continuousMode && completedInRun >= bundleLimit) {
         return { type: "IN_PROGRESS" };
       }
       continue;

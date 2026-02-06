@@ -138,6 +138,88 @@ test("runEpicAutopilot completes one task per run", async () => {
   }
 });
 
+test("runEpicAutopilot continuous mode finalizes in one run", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-continuous-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  const originalContinuous = process.env.ARBITER_CONTINUOUS;
+  process.chdir(tempDir);
+  const runId = "run-e2e-continuous";
+  process.env.ARBITER_RUN_ID = runId;
+  process.env.ARBITER_CONTINUOUS = "true";
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+
+    const prdPath = path.join(prdDir, "prd.json");
+    const initialState = {
+      activeEpicId: "EPIC-1",
+      epics: [
+        {
+          id: "EPIC-1",
+          status: "in_progress",
+          done: false,
+          tasks: [
+            {
+              id: "TASK-1",
+              done: false,
+              noop: true
+            },
+            {
+              id: "TASK-2",
+              done: false,
+              noop: true
+            }
+          ]
+        }
+      ]
+    };
+
+    await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+    await seedVerifierReceipts(tempDir, ["TASK-1", "TASK-2"]);
+
+    const run = await runEpicAutopilot();
+    assert.equal(run.type, "FINALIZED");
+
+    const finalRaw = await fs.promises.readFile(prdPath, "utf8");
+    const finalState = JSON.parse(finalRaw) as {
+      epics?: Array<{ id?: string; done?: boolean; tasks?: Array<{ id?: string; done?: boolean }> }>;
+    };
+    const finalEpic = finalState.epics?.find((epic) => epic.id === "EPIC-1");
+    assert.equal(finalEpic?.done, true);
+    assert.equal(finalEpic?.tasks?.find((task) => task.id === "TASK-1")?.done, true);
+    assert.equal(finalEpic?.tasks?.find((task) => task.id === "TASK-2")?.done, true);
+
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      runId,
+      "receipts.jsonl"
+    );
+    const receipts = await readReceipts(receiptsPath);
+    const types = receipts.map((entry) => entry.receipt.type);
+    assert.equal(types.filter((type) => type === "TASK_COMPLETED").length, 2);
+    assert.equal(types.filter((type) => type === "RUN_FINALIZED").length, 1);
+    assert.equal(types.filter((type) => type === "HALT_AND_ASK").length, 0);
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    if (originalContinuous === undefined) {
+      delete process.env.ARBITER_CONTINUOUS;
+    } else {
+      process.env.ARBITER_CONTINUOUS = originalContinuous;
+    }
+  }
+});
+
 test("runEpicAutopilot halts on tasks requiring external input", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-halt-"));
   const originalCwd = process.cwd();
