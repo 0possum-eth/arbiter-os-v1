@@ -47,7 +47,7 @@ test("verifyReceipts uses latest relevant receipts for task", () => {
           taskId: "TASK-1",
           packet: {
             taskId: "TASK-1",
-            tests: ["old-test"],
+            tests: ["arbiter/verify/__tests__/old.test.ts"],
             files_changed: ["old-file.ts"]
           }
         }
@@ -75,7 +75,11 @@ test("verifyReceipts uses latest relevant receipts for task", () => {
         receipt: {
           type: "EXECUTOR_COMPLETED",
           taskId: "TASK-2",
-          packet: { taskId: "TASK-2", tests: ["should-not-use"], files_changed: ["other.ts"] }
+          packet: {
+            taskId: "TASK-2",
+            tests: ["arbiter/verify/__tests__/other.test.ts"],
+            files_changed: ["other.ts"]
+          }
         }
       },
       {
@@ -103,7 +107,7 @@ test("verifyReceipts uses latest relevant receipts for task", () => {
           taskId: "TASK-1",
           packet: {
             taskId: "TASK-1",
-            tests: ["latest-test"],
+            tests: ["arbiter/verify/__tests__/latest.test.ts"],
             files_changed: ["arbiter/verify/verifyReceipts.ts"]
           }
         }
@@ -133,7 +137,7 @@ test("verifyReceipts uses latest relevant receipts for task", () => {
   assert.deepEqual(ok, {
     executor_receipt_id: "REC-EXECUTOR-NEW",
     verifier_receipt_ids: ["REC-SPEC-NEW", "REC-QUALITY-NEW"],
-    tests: ["latest-test"],
+    tests: ["arbiter/verify/__tests__/latest.test.ts"],
     files_changed: ["arbiter/verify/verifyReceipts.ts"]
   });
 });
@@ -238,7 +242,7 @@ test("verifyReceipts requires verifier packets after latest executor receipt", (
           taskId: "TASK-1",
           packet: {
             taskId: "TASK-1",
-            tests: ["old"],
+            tests: ["arbiter/verify/__tests__/old.test.ts"],
             files_changed: ["old.ts"]
           }
         }
@@ -268,7 +272,7 @@ test("verifyReceipts requires verifier packets after latest executor receipt", (
           taskId: "TASK-1",
           packet: {
             taskId: "TASK-1",
-            tests: ["new"],
+            tests: ["arbiter/verify/__tests__/new.test.ts"],
             files_changed: ["new.ts"]
           }
         }
@@ -278,4 +282,152 @@ test("verifyReceipts requires verifier packets after latest executor receipt", (
   );
 
   assert.equal(result, null);
+});
+
+test("verifyReceipts rejects forged verifier success for malformed executor evidence", () => {
+  const result = verifyReceipts(
+    [
+      {
+        id: "REC-EXECUTOR-FORGED",
+        receipt: {
+          type: "EXECUTOR_COMPLETED",
+          taskId: "TASK-1",
+          packet: {
+            taskId: "TASK-1",
+            tests: ["simulated:TASK-1"],
+            files_changed: ["arbiter/verify/specVerifier.ts"]
+          }
+        }
+      },
+      {
+        id: "REC-SPEC-FORGED",
+        receipt: {
+          type: "VERIFIER_SPEC",
+          taskId: "TASK-1",
+          passed: true,
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      },
+      {
+        id: "REC-QUALITY-FORGED",
+        receipt: {
+          type: "VERIFIER_QUALITY",
+          taskId: "TASK-1",
+          passed: true,
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      }
+    ],
+    "TASK-1"
+  );
+
+  assert.equal(result, null);
+});
+
+test("verifyReceipts rejects malformed verifier packet keys", () => {
+  const result = verifyReceipts(
+    [
+      {
+        id: "REC-EXECUTOR-1",
+        receipt: {
+          type: "EXECUTOR_COMPLETED",
+          taskId: "TASK-1",
+          packet: {
+            taskId: "TASK-1",
+            tests: ["executed:node --version: v22.0.0"],
+            files_changed: ["arbiter/verify/verifyReceipts.ts"]
+          }
+        }
+      },
+      {
+        id: "REC-SPEC-MALFORMED",
+        receipt: {
+          type: "VERIFIER_SPEC",
+          taskId: "TASK-1",
+          passed: true,
+          packet: { taskId: "TASK-1", passed: true, forged: true }
+        }
+      },
+      {
+        id: "REC-QUALITY-1",
+        receipt: {
+          type: "VERIFIER_QUALITY",
+          taskId: "TASK-1",
+          passed: true,
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      }
+    ],
+    "TASK-1"
+  );
+
+  assert.equal(result, null);
+});
+
+test("verifyReceipts rejects malformed integration and ux packet keys", () => {
+  const result = verifyReceipts(
+    [
+      ...validTaskPackets("TASK-1"),
+      {
+        id: "REC-INTEGRATION-BAD",
+        receipt: {
+          type: "INTEGRATION_CHECKED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true, forged: true }
+        }
+      },
+      {
+        id: "REC-UX-BAD",
+        receipt: {
+          type: "UX_SIMULATED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true, forged: true }
+        }
+      }
+    ],
+    "TASK-1",
+    { requiresIntegrationCheck: true, uxSensitive: true }
+  );
+
+  assert.equal(result, null);
+});
+
+test("verifyReceipts emits normalized evidence only", () => {
+  const result = verifyReceipts(
+    [
+      {
+        id: "REC-EXECUTOR-1",
+        receipt: {
+          type: "EXECUTOR_COMPLETED",
+          taskId: "TASK-1",
+          packet: {
+            taskId: "TASK-1",
+            tests: [" executed:node --version: v22.0.0 ", "simulated:TASK-1"],
+            files_changed: [" arbiter/verify/verifyReceipts.ts ", "no-extension"]
+          }
+        }
+      },
+      {
+        id: "REC-SPEC-1",
+        receipt: { type: "VERIFIER_SPEC", taskId: "TASK-1", passed: true, packet: { taskId: "TASK-1", passed: true } }
+      },
+      {
+        id: "REC-QUALITY-1",
+        receipt: {
+          type: "VERIFIER_QUALITY",
+          taskId: "TASK-1",
+          passed: true,
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      }
+    ],
+    "TASK-1"
+  );
+
+  assert.deepEqual(result, {
+    executor_receipt_id: "REC-EXECUTOR-1",
+    verifier_receipt_ids: ["REC-SPEC-1", "REC-QUALITY-1"],
+    tests: ["executed:node --version: v22.0.0"],
+    files_changed: ["arbiter/verify/verifyReceipts.ts"]
+  });
 });

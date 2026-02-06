@@ -27,6 +27,11 @@ type VerifyReceiptOptions = {
   uxSensitive?: boolean;
 };
 
+type NormalizedEvidence = {
+  tests: string[];
+  files_changed: string[];
+};
+
 const getReceiptId = (envelope: ReceiptEnvelope, index: number) =>
   envelope.id ?? envelope.receiptId ?? envelope.ts ?? `receipt-${index + 1}`;
 
@@ -38,6 +43,47 @@ const hasOwn = (value: Record<string, unknown>, key: string) =>
 
 const isStringList = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
+
+const hasOnlyKeys = (value: Record<string, unknown>, allowedKeys: string[]) =>
+  Object.keys(value).every((key) => allowedKeys.includes(key));
+
+const isPathEvidence = (value: string) => /[\\/]/.test(value) && /\.[A-Za-z0-9]+$/.test(value);
+
+const isMeaningfulTestEvidence = (value: string) =>
+  value.startsWith("executed:") || value.endsWith(".test.ts") || value.endsWith(".spec.ts");
+
+const hasMeaningfulEvidence = (completionPacket: TaskCompletionPacket) => {
+  const hasTestsField = Array.isArray(completionPacket.tests);
+  const tests = hasTestsField
+    ? completionPacket.tests.filter((item) => typeof item === "string" && isMeaningfulTestEvidence(item.trim()))
+    : [];
+  const hasFilesChangedField = Array.isArray(completionPacket.files_changed);
+  const filesChanged = hasFilesChangedField
+    ? completionPacket.files_changed.filter((item) => typeof item === "string" && isPathEvidence(item.trim()))
+    : [];
+  if (hasTestsField && tests.length === 0) {
+    return false;
+  }
+  if (hasFilesChangedField && filesChanged.length === 0) {
+    return false;
+  }
+  return tests.length > 0 || filesChanged.length > 0;
+};
+
+const normalizeEvidence = (completionPacket: TaskCompletionPacket): NormalizedEvidence => {
+  const tests = Array.isArray(completionPacket.tests)
+    ? completionPacket.tests
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0 && isMeaningfulTestEvidence(item))
+    : [];
+  const files_changed = Array.isArray(completionPacket.files_changed)
+    ? completionPacket.files_changed
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0 && isPathEvidence(item))
+    : [];
+
+  return { tests, files_changed };
+};
 
 const asTaskCompletionPacket = (value: unknown, taskId: string): TaskCompletionPacket | null => {
   if (!isRecord(value) || value.taskId !== taskId) {
@@ -60,6 +106,9 @@ const asVerificationPacket = (
   if (!isRecord(value)) {
     return null;
   }
+  if (!hasOnlyKeys(value, ["taskId", "passed"])) {
+    return null;
+  }
   if (value.taskId !== taskId || value.passed !== passed) {
     return null;
   }
@@ -70,6 +119,12 @@ const asIntegrationPacket = (value: unknown, taskId: string): IntegrationPacket 
   if (!isRecord(value)) {
     return null;
   }
+  if (!hasOnlyKeys(value, ["taskId", "passed", "checks"])) {
+    return null;
+  }
+  if (hasOwn(value, "checks") && !isStringList(value.checks)) {
+    return null;
+  }
   if (value.taskId !== taskId || value.passed !== true) {
     return null;
   }
@@ -78,6 +133,12 @@ const asIntegrationPacket = (value: unknown, taskId: string): IntegrationPacket 
 
 const asUxPacket = (value: unknown, taskId: string): UxPacket | null => {
   if (!isRecord(value)) {
+    return null;
+  }
+  if (!hasOnlyKeys(value, ["taskId", "passed", "journey_checks"])) {
+    return null;
+  }
+  if (hasOwn(value, "journey_checks") && !isStringList(value.journey_checks)) {
     return null;
   }
   if (value.taskId !== taskId || value.passed !== true) {
@@ -139,6 +200,10 @@ export function verifyReceipts(
   if (!executorPacket) {
     return null;
   }
+  if (!hasMeaningfulEvidence(executorPacket)) {
+    return null;
+  }
+  const normalizedEvidence = normalizeEvidence(executorPacket);
 
   let integrationIndex = -1;
   if (options.requiresIntegrationCheck === true) {
@@ -178,11 +243,11 @@ export function verifyReceipts(
   if (uxIndex >= 0) {
     evidence.ux_receipt_id = getReceiptId(receipts[uxIndex], uxIndex);
   }
-  if (isStringList(executorPacket.tests)) {
-    evidence.tests = executorPacket.tests;
+  if (normalizedEvidence.tests.length > 0) {
+    evidence.tests = normalizedEvidence.tests;
   }
-  if (isStringList(executorPacket.files_changed)) {
-    evidence.files_changed = executorPacket.files_changed;
+  if (normalizedEvidence.files_changed.length > 0) {
+    evidence.files_changed = normalizedEvidence.files_changed;
   }
 
   return evidence;
