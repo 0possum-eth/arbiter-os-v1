@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { isLedgerPath } from "../../arbiter/policy/ledgerGuard";
 import { getRoleFromEnv } from "../../arbiter/policy/roleContext";
+import { isTrusted } from "../../arbiter/trust/commands";
 
 const extractTargets = (input) => {
   const args = input?.args;
@@ -11,6 +12,36 @@ const extractTargets = (input) => {
   if (Array.isArray(args.paths)) return args.paths.filter((item) => typeof item === "string");
   if (Array.isArray(args.files)) return args.files.filter((item) => typeof item === "string");
   return [];
+};
+
+const getToolName = (input) => {
+  if (typeof input?.name === "string") return input.name;
+  if (typeof input?.tool === "string") return input.tool;
+  if (typeof input?.tool?.name === "string") return input.tool.name;
+  return null;
+};
+
+const extractMountedDocs = (input) => {
+  const args = input?.args;
+  if (!args) return [];
+  const docs = [];
+  if (typeof args.doc === "string") docs.push(args.doc);
+  if (typeof args.docPath === "string") docs.push(args.docPath);
+  if (typeof args.contextDoc === "string") docs.push(args.contextDoc);
+  if (Array.isArray(args.docs)) docs.push(...args.docs.filter((item) => typeof item === "string"));
+  if (Array.isArray(args.docPaths)) {
+    docs.push(...args.docPaths.filter((item) => typeof item === "string"));
+  }
+  if (Array.isArray(args.mountedDocs)) {
+    docs.push(...args.mountedDocs.filter((item) => typeof item === "string"));
+  }
+  if (Array.isArray(args.contextDocs)) {
+    docs.push(...args.contextDocs.filter((item) => typeof item === "string"));
+  }
+  if (Array.isArray(args.mounts)) {
+    docs.push(...args.mounts.filter((item) => typeof item === "string"));
+  }
+  return docs;
 };
 
 const isEpicIncomplete = () => {
@@ -40,6 +71,21 @@ export const ArbiterOsPlugin = async () => ({
       const role = getRoleFromEnv();
       if (role !== "ledger-keeper") {
         throw new Error("Ledger writes must go through Ledger Keeper");
+      }
+    }
+
+    if (getToolName(input) === "runTask") {
+      const mountedDocs = extractMountedDocs(input);
+      if (mountedDocs.length > 0) {
+        const untrusted = [];
+        for (const docPath of mountedDocs) {
+          if (!(await isTrusted(docPath))) {
+            untrusted.push(docPath);
+          }
+        }
+        if (untrusted.length > 0) {
+          throw new Error(`Untrusted docs mounted: ${untrusted.join(", ")}`);
+        }
       }
     }
   },
