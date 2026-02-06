@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { tokenize } from "./retrievalScoring";
+
 type Brick = {
   path: string;
   heading: string;
   content: string;
+  pathTerms: string[];
+  headingTerms: string[];
+  contentTerms: string[];
 };
 
 const splitByHeading = (content: string) => {
@@ -33,18 +38,43 @@ const splitByHeading = (content: string) => {
   }));
 };
 
+const collectFiles = async (rootDir: string): Promise<string[]> => {
+  const entries = await fs.promises.readdir(rootDir, { withFileTypes: true });
+  const sortedEntries = entries.sort((left, right) => left.name.localeCompare(right.name));
+  const files: string[] = [];
+
+  for (const entry of sortedEntries) {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFiles(fullPath)));
+      continue;
+    }
+    if (entry.isFile()) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+};
+
 export async function indexBricks(sourceDir: string, indexPath: string) {
-  const entries = await fs.promises.readdir(sourceDir, { withFileTypes: true });
+  const filePaths = await collectFiles(sourceDir);
   const bricks: Brick[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const filePath = path.join(sourceDir, entry.name);
+  for (const filePath of filePaths) {
     const raw = await fs.promises.readFile(filePath, "utf8");
     const chunks = splitByHeading(raw);
+    const pathTerms = tokenize(filePath);
     for (const chunk of chunks) {
       if (!chunk.content) continue;
-      bricks.push({ path: filePath, heading: chunk.heading, content: chunk.content });
+      bricks.push({
+        path: filePath,
+        heading: chunk.heading,
+        content: chunk.content,
+        pathTerms,
+        headingTerms: tokenize(chunk.heading),
+        contentTerms: tokenize(chunk.content)
+      });
     }
   }
 
