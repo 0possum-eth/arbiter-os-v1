@@ -221,6 +221,57 @@ test("plugin allows read tools for read-only verifier roles", async () => {
   }
 });
 
+test("plugin allows arbiter writes to non-ledger targets", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "arbiter";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await plugin["tool.execute.before"]({
+      name: "writeFile",
+      args: { path: "docs/arbiter/notes/todo.md" }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin blocks arbiter writes to ledger and view paths", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "arbiter";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { path: "docs/arbiter/_ledger/runs/2026-02-06.jsonl" }
+        }),
+      /ledger keeper/i
+    );
+
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { path: "docs/arbiter/progress.txt" }
+        }),
+      /ledger keeper/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
 test("plugin restricts ledger-keeper writes to ledger and view paths", async () => {
   const originalRole = process.env.ARBITER_ROLE;
   process.env.ARBITER_ROLE = "ledger-keeper";

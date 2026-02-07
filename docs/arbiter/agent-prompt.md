@@ -16,5 +16,7 @@ This contract defines how agent prompts route planning and execution when Arbite
 ## Policy Guarantees
 
 - Arbiter remains the sole coordinator.
+- Arbiter can execute non-ledger write tools needed for coordination workflows.
+- Ledger writes must go through Ledger Keeper.
 - Task completion requires verifier evidence and receipt continuity.
 - Loop state and ledger updates stay synchronized with run-scoped receipts.

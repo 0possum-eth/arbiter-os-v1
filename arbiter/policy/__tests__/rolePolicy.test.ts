@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 
 import { evaluateRolePolicy } from "../rolePolicy";
@@ -93,4 +95,40 @@ test("executor can run write tools with non-ledger targets", () => {
   });
 
   assert.equal(result.allowed, true);
+});
+
+test("arbiter can run write tools with non-ledger targets", () => {
+  const result = evaluateRolePolicy({
+    role: "arbiter",
+    toolName: "writeFile",
+    targets: ["docs/arbiter/notes/todo.md"]
+  });
+
+  assert.equal(result.allowed, true);
+});
+
+test("arbiter cannot write ledger and view paths directly", () => {
+  const ledgerResult = evaluateRolePolicy({
+    role: "arbiter",
+    toolName: "writeFile",
+    targets: ["docs/arbiter/_ledger/runs/2026-02-06.jsonl"]
+  });
+  const viewResult = evaluateRolePolicy({
+    role: "arbiter",
+    toolName: "writeFile",
+    targets: ["docs/arbiter/progress.txt"]
+  });
+
+  assert.equal(ledgerResult.allowed, false);
+  assert.match(ledgerResult.reason || "", /ledger keeper/i);
+  assert.equal(viewResult.allowed, false);
+  assert.match(viewResult.reason || "", /ledger keeper/i);
+});
+
+test("agent prompt documents arbiter write-power boundaries", async () => {
+  const promptPath = path.join(process.cwd(), "docs", "arbiter", "agent-prompt.md");
+  const content = await fs.promises.readFile(promptPath, "utf8");
+
+  assert.match(content, /Arbiter can execute non-ledger write tools/i);
+  assert.match(content, /Ledger writes must go through Ledger Keeper/i);
 });
