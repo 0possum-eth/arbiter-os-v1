@@ -134,10 +134,10 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 23 - Add VM regression tests
 
 ### Phase G: Docs + Verification Publish
-- [ ] Task 24 - Update install docs for dual-stack modes and first-run choices
-- [ ] Task 25 - Update usage docs with route examples
-- [ ] Task 26 - Run full verification suite
-- [ ] Task 27 - Publish readiness deltas + explicit parity report
+- [x] Task 24 - Update install docs for dual-stack modes and first-run choices
+- [x] Task 25 - Update usage docs with route examples
+- [x] Task 26 - Run full verification suite
+- [x] Task 27 - Publish readiness deltas + explicit parity report
 
 ---
 
@@ -1079,7 +1079,7 @@ git commit -m "docs(readiness): publish dual-stack routing verification and core
 
 ## Definition of Done for This Plan
 
-- All 24 tasks completed with passing verification steps.
+- All 27 tasks completed with passing verification steps.
 - Dual-stack workflow mode is discoverable and configurable.
 - `run-epic` prompts only when route is ambiguous.
 - One-sentence startup and no-instruction startup both handled predictably.

@@ -87,8 +87,8 @@ If any condition fails, release status is **BLOCKED** until the failing check is
 <!-- readiness-metadata:start -->
 ## Evidence Metadata
 
-- generatedAt: 2026-02-07T02:08:40.981Z
-- sourceCommit: 1aace11fbff754f8c354997279dc16c652bb2954
+- generatedAt: 2026-02-07T18:20:39.027Z
+- sourceCommit: 0d19915b0bd2a357a945a0cd6c06644ea052f219
 
 ### Category Evidence Inputs
 
