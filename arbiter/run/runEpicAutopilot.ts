@@ -22,6 +22,7 @@ type RunEpicResult =
 type PrdTaskRecord = {
   id?: string;
   done?: boolean;
+  noop?: boolean;
   artifactsToTouch?: string[];
 };
 
@@ -46,7 +47,7 @@ const getBundleLimit = async (): Promise<number> => {
     const activeEpic = epics.find((epic) => epic.id === prdState.activeEpicId);
     const tasks = Array.isArray(activeEpic?.tasks) ? activeEpic?.tasks : [];
     const pendingTasks: BundleTask[] = tasks
-      .filter((task) => task.done !== true && typeof task.id === "string")
+      .filter((task) => task.done !== true && task.noop !== true && typeof task.id === "string")
       .map((task) => ({
         id: task.id as string,
         artifactsToTouch: Array.isArray(task.artifactsToTouch) ? task.artifactsToTouch : undefined

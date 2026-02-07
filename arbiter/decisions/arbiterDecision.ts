@@ -51,14 +51,14 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
       };
     }
 
-    const taskIds = candidate.artifactsToTouch && candidate.artifactsToTouch.length > 0
-      ? candidate.artifactsToTouch
-      : [`${candidate.id}-TASK-1`];
+    const tasks = candidate.artifactsToTouch && candidate.artifactsToTouch.length > 0
+      ? candidate.artifactsToTouch.map((id) => ({ id, noop: false }))
+      : [{ id: `${candidate.id}-TASK-1`, noop: true }];
 
     const ledgerPath = path.join(process.cwd(), "docs", "arbiter", "_ledger", "prd.events.jsonl");
     await activateEpic(ledgerPath, {
       id: candidate.id,
-      tasks: taskIds.map((id) => ({ id, noop: true }))
+      tasks
     });
 
     return { status: "OK", scoutSynthesis };

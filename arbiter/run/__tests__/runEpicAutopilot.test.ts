@@ -228,6 +228,78 @@ test("runEpicAutopilot continuous mode finalizes in one run", async () => {
   }
 });
 
+test("runEpicAutopilot limits non-continuous runs to one actionable bundle", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-bundle-limit-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  const originalIndexPath = process.env.ARBITER_DOCS_INDEX_PATH;
+  process.chdir(tempDir);
+  const runId = "run-e2e-bundle-limit";
+  process.env.ARBITER_RUN_ID = runId;
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+
+    const sourceDir = path.join(tempDir, "docs", "sources");
+    await fs.promises.mkdir(sourceDir, { recursive: true });
+    const strategyDocPath = path.join(sourceDir, "bundle.md");
+    await fs.promises.writeFile(
+      strategyDocPath,
+      "# Bundle\nbundle context for TASK-1 TASK-2 TASK-3 TASK-4 TASK-5",
+      "utf8"
+    );
+    const indexPath = path.join(tempDir, "index.jsonl");
+    await indexBricks(sourceDir, indexPath);
+    process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
+
+    const prdPath = path.join(prdDir, "prd.json");
+    const initialState = {
+      activeEpicId: "EPIC-1",
+      epics: [
+        {
+          id: "EPIC-1",
+          status: "in_progress",
+          done: false,
+          tasks: [
+            { id: "TASK-1", query: "bundle context", done: false, artifactsToTouch: ["a.txt"] },
+            { id: "TASK-2", query: "bundle context", done: false, artifactsToTouch: ["b.txt"] },
+            { id: "TASK-3", query: "bundle context", done: false, artifactsToTouch: ["c.txt"] },
+            { id: "TASK-4", query: "bundle context", done: false, artifactsToTouch: ["d.txt"] },
+            { id: "TASK-5", query: "bundle context", done: false, artifactsToTouch: ["e.txt"] }
+          ]
+        }
+      ]
+    };
+
+    await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+
+    const run = await runEpicAutopilot();
+    assert.equal(run.type, "IN_PROGRESS");
+
+    const updatedRaw = await fs.promises.readFile(prdPath, "utf8");
+    const updatedState = JSON.parse(updatedRaw) as {
+      epics?: Array<{ id?: string; tasks?: Array<{ id?: string; done?: boolean }> }>;
+    };
+    const updatedEpic = updatedState.epics?.find((epic) => epic.id === "EPIC-1");
+    const doneCount =
+      updatedEpic?.tasks?.filter((task) => task.done === true).length ?? 0;
+    assert.equal(doneCount, 2);
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    if (originalIndexPath === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalIndexPath;
+    }
+  }
+});
+
 test("runEpicAutopilot halts on tasks requiring external input", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-halt-"));
   const originalCwd = process.cwd();
@@ -461,6 +533,40 @@ test("runEpicAutopilot completes a noop task", async () => {
     assert.equal(types.filter((type) => type === "TASK_COMPLETED").length, 1);
     assert.equal(types.filter((type) => type === "RUN_FINALIZED").length, 1);
     assert.equal(types.filter((type) => type === "HALT_AND_ASK").length, 0);
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+  }
+});
+
+test("runEpicAutopilot activates scout tasks as actionable by default", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-scout-activation-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  process.chdir(tempDir);
+  const runId = "run-e2e-scout-activation";
+  process.env.ARBITER_RUN_ID = runId;
+
+  try {
+    const run = await runEpicAutopilot();
+    assert.equal(run.type, "HALT_AND_ASK");
+    assert.equal(run.receipt.type, "HALT_AND_ASK");
+    assert.equal(run.receipt.reason, "CONTEXT_PACK_REQUIRED");
+
+    const prdPath = path.join(tempDir, "docs", "arbiter", "prd.json");
+    const prdRaw = await fs.promises.readFile(prdPath, "utf8");
+    const prdState = JSON.parse(prdRaw) as {
+      activeEpicId?: string;
+      epics?: Array<{ id?: string; tasks?: Array<{ id?: string; done?: boolean; noop?: boolean }> }>;
+    };
+    const activeEpic = prdState.epics?.find((epic) => epic.id === prdState.activeEpicId);
+    const firstPendingTask = activeEpic?.tasks?.find((task) => task.done !== true);
+    assert.equal(firstPendingTask?.noop, false);
+    assert.equal(firstPendingTask?.done, false);
   } finally {
     process.chdir(originalCwd);
     if (originalRunId === undefined) {
