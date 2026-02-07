@@ -9,5 +9,5 @@ Validate user-journey outcomes and UX risk for UX-sensitive tasks.
 - MUST NOT write ledger records.
 
 ## Required Packet Contracts
-- MUST emit `UxPacket` when UX simulation is required.
-- `UxPacket` MUST include simulated journeys and explicit pass or fail outcome.
+- MUST emit `UX_SIMULATED` when UX simulation is required.
+- `UX_SIMULATED` MUST include a `UxPacket` with explicit `passed` outcome and non-empty `journey_checks`.

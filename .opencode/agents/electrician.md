@@ -9,5 +9,5 @@ Validate cross-task integration behavior and integration-risk readiness.
 - MUST NOT bypass integration checks when required.
 
 ## Required Packet Contracts
-- MUST emit `IntegrationPacket` when integration checks are requested.
-- `IntegrationPacket` MUST include integration scope and explicit pass or fail outcome.
+- MUST emit `INTEGRATION_CHECKED` when integration checks are requested.
+- `INTEGRATION_CHECKED` MUST include an `IntegrationPacket` with integration scope and explicit `passed` outcome.

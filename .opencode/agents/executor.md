@@ -9,5 +9,5 @@ Implement assigned tasks and return execution-complete evidence for arbitration.
 - MUST limit output to implementation evidence and task status.
 
 ## Required Packet Contracts
-- MUST emit `TCP` when implementation is complete.
-- `TCP` MUST include task identifier, implementation outcome, and changed file list.
+- MUST emit `EXECUTOR_COMPLETED` when implementation is complete.
+- `EXECUTOR_COMPLETED` MUST include a `TaskCompletionPacket` with task identifier, `execution` records, and changed file list.

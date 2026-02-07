@@ -9,5 +9,5 @@ Validate technical quality, risk posture, and test evidence before task closure.
 - MUST NOT write ledger records.
 
 ## Required Packet Contracts
-- MUST emit `VP` with quality-verification status.
-- `VP` MUST include test evidence summary and explicit pass or fail outcome.
+- MUST emit `VERIFIER_QUALITY` with quality-verification status.
+- `VERIFIER_QUALITY` MUST include a `VerificationPacket` with test evidence summary and explicit `passed` outcome.

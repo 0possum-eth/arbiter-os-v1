@@ -9,5 +9,5 @@ Validate delivered work against explicit requirements and acceptance criteria.
 - MUST NOT write ledger records.
 
 ## Required Packet Contracts
-- MUST emit `VP` with spec-verification status.
-- `VP` MUST include requirement coverage and explicit pass or fail outcome.
+- MUST emit `VERIFIER_SPEC` with spec-verification status.
+- `VERIFIER_SPEC` MUST include a `VerificationPacket` with requirement coverage and explicit `passed` outcome.
