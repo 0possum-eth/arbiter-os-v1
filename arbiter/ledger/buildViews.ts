@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { LEDGER_SCHEMA_VERSION } from "./events";
 import type { LedgerEvent } from "./events";
 import { progressView } from "./progressView";
 
@@ -29,11 +30,18 @@ const snapshotFile = async (sourcePath: string, snapshotPath: string) => {
 
 export async function buildViews(ledgerPath: string, outDir: string) {
   const content = await fs.promises.readFile(ledgerPath, "utf8");
+  const parseEvent = (line: string, lineNumber: number): LedgerEvent => {
+    const event = JSON.parse(line) as Partial<LedgerEvent>;
+    if (event.schemaVersion !== LEDGER_SCHEMA_VERSION) {
+      throw new Error(`Unsupported ledger schema version at line ${lineNumber}: ${String(event.schemaVersion)}`);
+    }
+    return event as LedgerEvent;
+  };
   const events = content
     .trim()
     .split("\n")
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as LedgerEvent);
+    .map((line, index) => parseEvent(line, index + 1));
 
   const epicMap = new Map<string, Epic>();
   let activeEpicId: string | undefined;

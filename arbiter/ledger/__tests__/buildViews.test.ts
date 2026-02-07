@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { buildViews } from "../buildViews";
+import { LEDGER_SCHEMA_VERSION } from "../events";
 
 test("buildViews regenerates prd.json from events", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-views-"));
@@ -13,9 +14,27 @@ test("buildViews regenerates prd.json from events", async () => {
   await fs.promises.writeFile(
     ledgerPath,
     [
-      JSON.stringify({ ts: "t", op: "epic_selected", id: "EPIC-1", data: { epicId: "EPIC-1" } }),
-      JSON.stringify({ ts: "t", op: "task_upsert", id: "TASK-1", data: { epicId: "EPIC-1" } }),
-      JSON.stringify({ ts: "t", op: "task_done", id: "TASK-1", data: { epicId: "EPIC-1" } })
+      JSON.stringify({
+        schemaVersion: LEDGER_SCHEMA_VERSION,
+        ts: "t",
+        op: "epic_selected",
+        id: "EPIC-1",
+        data: { epicId: "EPIC-1" }
+      }),
+      JSON.stringify({
+        schemaVersion: LEDGER_SCHEMA_VERSION,
+        ts: "t",
+        op: "task_upsert",
+        id: "TASK-1",
+        data: { epicId: "EPIC-1" }
+      }),
+      JSON.stringify({
+        schemaVersion: LEDGER_SCHEMA_VERSION,
+        ts: "t",
+        op: "task_done",
+        id: "TASK-1",
+        data: { epicId: "EPIC-1" }
+      })
     ].join("\n") + "\n",
     "utf8"
   );

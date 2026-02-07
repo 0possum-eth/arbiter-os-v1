@@ -55,6 +55,14 @@ Context packs are generated from indexed document bricks and mounted into execut
 - Initializes run index stream at `docs/arbiter/_ledger/runs.jsonl`
 - Preserves baseline workspace files such as `docs/arbiter/prd.json` and `docs/arbiter/_ledger/prd.events.jsonl`
 
+## Ledger Replay
+
+Replay tooling rebuilds derived views from the ledger event stream.
+
+- Use `rebuildViewsFromLedger({ ledgerPath, rootDir })` from `arbiter/ledger/rebuildViews.ts` to regenerate `prd.json` and `progress.txt`
+- Ledger events are schema-versioned as `arbiter.ledger.v1` before they are appended
+- Validate replay behavior with `bash tests/arbiter/test-ledger-replay.sh`
+
 ## Install Steps
 
 For OpenCode installation and plugin wiring, follow [.opencode/INSTALL.md](../../.opencode/INSTALL.md#installation-steps).

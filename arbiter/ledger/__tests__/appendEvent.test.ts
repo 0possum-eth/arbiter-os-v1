@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { appendEvent } from "../appendEvent";
+import { LEDGER_SCHEMA_VERSION } from "../events";
 
 test("appendEvent writes JSONL events", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-ledger-"));
@@ -22,4 +23,5 @@ test("appendEvent writes JSONL events", async () => {
   assert.equal(lines.length, 1);
   const event = JSON.parse(lines[0]);
   assert.equal(event.op, "task_upsert");
+  assert.equal(event.schemaVersion, LEDGER_SCHEMA_VERSION);
 });
