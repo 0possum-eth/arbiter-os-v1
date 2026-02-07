@@ -112,10 +112,10 @@ Routing directly to <selected-route> because you explicitly requested it.
 
 ### Phase C: Adaptive Routing
 - [x] Task 9 - Add intake classifier (maturity/env/workspace)
-- [ ] Task 10 - Add conditional prompt generator
+- [x] Task 10 - Add conditional prompt generator
 - [x] Task 11 - Route explicit user intent directly
 - [x] Task 12 - Route ambiguous starts to option menu
-- [ ] Task 13 - Add tests for each route + prompt copy snapshot freeze
+- [x] Task 13 - Add tests for each route + prompt copy snapshot freeze
 
 ### Phase D: Superpowers/Arbiter Interplay
 - [ ] Task 14 - Update `run-epic`/`execute-plan` docs and skills for dual-stack routing
