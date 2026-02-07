@@ -39,6 +39,14 @@ Restart OpenCode. The plugin will automatically inject Arbiter OS run-loop conte
 
 Verify by asking: "what is the canonical Arbiter OS entrypoint?" (expected: `run-epic`)
 
+### Windows-native installer
+
+From the repo root on Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/arbiter/install-opencode.ps1
+```
+
 ## Usage
 
 ### Arbiter OS

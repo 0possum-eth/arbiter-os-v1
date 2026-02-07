@@ -60,6 +60,12 @@ Both should show symlinks pointing to the superpowers directory.
 
 Pick your shell below: [Command Prompt](#command-prompt) | [PowerShell](#powershell) | [Git Bash](#git-bash)
 
+For a repo-local one-shot install, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/arbiter/install-opencode.ps1
+```
+
 #### Command Prompt
 
 Run as Administrator, or with Developer Mode enabled:
