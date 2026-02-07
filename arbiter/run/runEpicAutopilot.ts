@@ -12,6 +12,11 @@ import { runUxCoordinator } from "../phases/uxCoordinator";
 import { emitReceipt } from "../receipts/emitReceipt";
 import { markRunCompleted, markRunStarted } from "../receipts/runLifecycle";
 import type { ReceiptPayload } from "../receipts/types";
+import {
+  resolveWorkflowExecutionProfile,
+  resolveWorkflowMode,
+  type WorkflowMode
+} from "./workflowMode";
 import { inspectState } from "../state/inspectState";
 
 type RunEpicResult =
@@ -36,7 +41,11 @@ type PrdState = {
   epics?: PrdEpicRecord[];
 };
 
-const getBundleLimit = async (): Promise<number> => {
+type RunEpicOptions = {
+  workflowMode?: WorkflowMode | string;
+};
+
+const getBundleLimit = async (maxBundleSize: number): Promise<number> => {
   const prdPath = path.join(process.cwd(), "docs", "arbiter", "prd.json");
   if (!fs.existsSync(prdPath)) return 1;
 
@@ -54,17 +63,21 @@ const getBundleLimit = async (): Promise<number> => {
       }));
 
     if (pendingTasks.length === 0) return 1;
-    const bundle = bundleTasks(pendingTasks, { maxBundleSize: 2 });
+    const bundle = bundleTasks(pendingTasks, { maxBundleSize });
     return bundle.length > 0 ? bundle.length : 1;
   } catch {
     return 1;
   }
 };
 
-export async function runEpicAutopilot(): Promise<RunEpicResult> {
+export async function runEpicAutopilot(options: RunEpicOptions = {}): Promise<RunEpicResult> {
   markRunStarted();
   try {
-    const continuousMode = process.env.ARBITER_CONTINUOUS === "true";
+    const workflowMode = resolveWorkflowMode(options.workflowMode);
+    const workflowProfile = resolveWorkflowExecutionProfile(workflowMode, {
+      continuousEnv: process.env.ARBITER_CONTINUOUS === "true"
+    });
+    const continuousMode = workflowProfile.continuousMode;
     const state = await inspectState();
 
     if (state.status === "NO_ACTIVE_EPIC") {
@@ -78,7 +91,7 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
       }
     }
 
-    let bundleLimit = await getBundleLimit();
+    let bundleLimit = await getBundleLimit(workflowProfile.maxBundleSize);
     let completedInRun = 0;
 
     while (true) {
@@ -133,7 +146,7 @@ export async function runEpicAutopilot(): Promise<RunEpicResult> {
           await emitReceipt({ type: "RUN_FINALIZED" });
           return { type: "FINALIZED" };
         }
-        bundleLimit = await getBundleLimit();
+        bundleLimit = await getBundleLimit(workflowProfile.maxBundleSize);
         completedInRun = 0;
         continue;
       }

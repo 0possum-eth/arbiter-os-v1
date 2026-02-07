@@ -588,3 +588,122 @@ test("runEpicAutopilot activates scout tasks as actionable by default", async ()
     }
   }
 });
+
+test("runEpicAutopilot single_agent mode completes only one actionable task", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-single-agent-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  const originalIndexPath = process.env.ARBITER_DOCS_INDEX_PATH;
+  process.chdir(tempDir);
+  const runId = "run-e2e-single-agent";
+  process.env.ARBITER_RUN_ID = runId;
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+
+    const sourceDir = path.join(tempDir, "docs", "sources");
+    await fs.promises.mkdir(sourceDir, { recursive: true });
+    const strategyDocPath = path.join(sourceDir, "single-agent.md");
+    await fs.promises.writeFile(
+      strategyDocPath,
+      "# Single Agent\nsingle mode context for TASK-1 TASK-2 TASK-3",
+      "utf8"
+    );
+    const indexPath = path.join(tempDir, "index.jsonl");
+    await indexBricks(sourceDir, indexPath);
+    process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
+
+    const prdPath = path.join(prdDir, "prd.json");
+    const initialState = {
+      activeEpicId: "EPIC-1",
+      epics: [
+        {
+          id: "EPIC-1",
+          status: "in_progress",
+          done: false,
+          tasks: [
+            { id: "TASK-1", query: "single mode context", done: false, artifactsToTouch: ["a.txt"] },
+            { id: "TASK-2", query: "single mode context", done: false, artifactsToTouch: ["b.txt"] },
+            { id: "TASK-3", query: "single mode context", done: false, artifactsToTouch: ["c.txt"] }
+          ]
+        }
+      ]
+    };
+
+    await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+
+    const run = await runEpicAutopilot({ workflowMode: "single_agent" });
+    assert.equal(run.type, "IN_PROGRESS");
+
+    const updatedRaw = await fs.promises.readFile(prdPath, "utf8");
+    const updatedState = JSON.parse(updatedRaw) as {
+      epics?: Array<{ id?: string; tasks?: Array<{ id?: string; done?: boolean }> }>;
+    };
+    const updatedEpic = updatedState.epics?.find((epic) => epic.id === "EPIC-1");
+    const doneCount = updatedEpic?.tasks?.filter((task) => task.done === true).length ?? 0;
+    assert.equal(doneCount, 1);
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    if (originalIndexPath === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalIndexPath;
+    }
+  }
+});
+
+test("runEpicAutopilot batch_validation mode finalizes without ARBITER_CONTINUOUS", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-batch-validation-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  const originalContinuous = process.env.ARBITER_CONTINUOUS;
+  process.chdir(tempDir);
+  const runId = "run-e2e-batch-validation";
+  process.env.ARBITER_RUN_ID = runId;
+  delete process.env.ARBITER_CONTINUOUS;
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+
+    const prdPath = path.join(prdDir, "prd.json");
+    const initialState = {
+      activeEpicId: "EPIC-1",
+      epics: [
+        {
+          id: "EPIC-1",
+          status: "in_progress",
+          done: false,
+          tasks: [
+            { id: "TASK-1", done: false, noop: true },
+            { id: "TASK-2", done: false, noop: true }
+          ]
+        }
+      ]
+    };
+
+    await fs.promises.writeFile(prdPath, `${JSON.stringify(initialState, null, 2)}\n`, "utf8");
+    await seedVerifierReceipts(tempDir, runId, ["TASK-1", "TASK-2"]);
+
+    const run = await runEpicAutopilot({ workflowMode: "batch_validation" });
+    assert.equal(run.type, "FINALIZED");
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    if (originalContinuous === undefined) {
+      delete process.env.ARBITER_CONTINUOUS;
+    } else {
+      process.env.ARBITER_CONTINUOUS = originalContinuous;
+    }
+  }
+});
