@@ -36,3 +36,10 @@ This document captures locked requirements for dual-stack Superpowers + Arbiter 
 | Assisted dependency path requires consent and writes receipts | `npm test -- "arbiter/preflight/__tests__/runtimeDoctor.test.ts" "arbiter/preflight/__tests__/installPlanner.test.ts" "arbiter/preflight/__tests__/installExecutor.test.ts"` |
 | Status includes evidence health and prevents false “flawless” claims | `npm test -- "arbiter/state/__tests__/inspectStateEvidence.test.ts"` and `bash tests/arbiter/test-run-epic-intake-routing.sh` |
 | Core build-plan parity remains enforced | `bash tests/arbiter/test-core-plan-parity.sh` |
+
+## Mandatory Closure Checklist
+
+- All acceptance criteria verification commands pass before publication.
+- No task is marked done without verifier evidence and ledger continuity.
+- Generated run artifacts are cleaned before publication commits (`docs/arbiter/_ledger/runs*`, `docs/arbiter/context-packs*`).
+- Readiness publication includes parity confirmation for `run-epic` canonical routing and `execute-plan` compatibility.

@@ -102,7 +102,7 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 1 - Build discussion-to-requirement checklist
 - [x] Task 2 - Build core build-plan parity checklist
 - [x] Task 3 - Add acceptance criteria per requirement
-- [ ] Task 4 - Add mandatory closure checklist
+- [x] Task 4 - Add mandatory closure checklist
 
 ### Phase B: Workflow Profiles + Persistence
 - [x] Task 5 - Add profile model (`superpowers_core`, `arbiter_core`, `hybrid_guided`)

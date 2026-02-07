@@ -22,4 +22,9 @@ grep -Fq "explicit user consent" "$REQUIREMENTS_PATH"
 grep -Fq "## Truthfulness Guardrails" "$REQUIREMENTS_PATH"
 grep -Fq "must not claim" "$REQUIREMENTS_PATH"
 
+grep -Fq "## Mandatory Closure Checklist" "$REQUIREMENTS_PATH"
+grep -Fq "All acceptance criteria verification commands pass" "$REQUIREMENTS_PATH"
+grep -Fq "No task is marked done without verifier evidence and ledger continuity" "$REQUIREMENTS_PATH"
+grep -Fq "Generated run artifacts are cleaned before publication commits" "$REQUIREMENTS_PATH"
+
 echo "Dual-stack requirements gate passed"
