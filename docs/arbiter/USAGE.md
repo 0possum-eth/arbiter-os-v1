@@ -10,15 +10,24 @@ This guide covers the operational commands used during an Arbiter OS run in Open
 - Keep all implementation work inside the `run-epic` loop so state, receipts, and ledger updates stay aligned
 - Command contract: [`commands/run-epic.md`](../../commands/run-epic.md)
 
-## Run-Epic + Trust Flow
+## Arbiter-Status Usage
+
+`arbiter-status` is the canonical command for state inspection snapshots.
+
+- Use `arbiter-status` to read the current `inspectState` result before running work
+- Snapshot status returns one of: `NO_ACTIVE_EPIC`, `ACTIVE_EPIC` (with `epicId`), `NO_MORE_WORK`
+- Command contract: [`commands/arbiter-status.md`](../../commands/arbiter-status.md)
+
+## Run-Epic + Arbiter-Status + Trust Flow
 
 Use trust commands inside the `run-epic` loop before behavior-doc execution:
 
 1. `run-epic`
-2. `approve-brick <doc-path>`
-3. `mount-doc <doc-path>`
-4. `list-bricks`
-5. Continue the `run-epic` cycle with trusted mounted docs
+2. `arbiter-status`
+3. `approve-brick <doc-path>`
+4. `mount-doc <doc-path>`
+5. `list-bricks`
+6. Continue the `run-epic` cycle with trusted mounted docs
 
 ## Trust Commands
 
