@@ -2,6 +2,8 @@
 
 Complete guide for using Arbiter OS with [OpenCode.ai](https://opencode.ai).
 
+Superpowers compatibility: OpenCode install paths intentionally keep the `superpowers` directory and symlink names so existing setups keep working.
+
 ## Quick Install
 
 Tell OpenCode:

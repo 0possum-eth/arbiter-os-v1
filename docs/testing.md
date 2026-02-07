@@ -1,6 +1,8 @@
-# Testing Superpowers Skills
+# Testing Arbiter OS Skills
 
-This document describes how to test Superpowers skills, particularly the integration tests for complex skills like `subagent-driven-development`.
+This document describes how to test Arbiter OS skills, particularly the integration tests for complex skills like `subagent-driven-development`.
+
+Superpowers compatibility: test paths still reference the `superpowers` plugin directory for environment continuity.
 
 ## Overview
 

@@ -1,6 +1,8 @@
-# Superpowers
+# Arbiter OS
 
-Superpowers is a complete software development workflow for your coding agents, built on top of a set of composable "skills" and some initial instructions that make sure your agent uses them.
+Arbiter OS is a complete software development workflow for coding agents, built on composable skills plus orchestration guardrails that keep execution verifiable.
+
+Superpowers compatibility: this repository preserves the established `superpowers` installation paths, plugin names, and skill references for existing users.
 
 ## How it works
 

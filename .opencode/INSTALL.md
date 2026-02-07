@@ -1,5 +1,7 @@
 # Installing Arbiter OS for OpenCode
 
+Superpowers compatibility: installation keeps the `superpowers` directory layout so existing plugin and skill links remain valid.
+
 ## Prerequisites
 
 - [OpenCode.ai](https://opencode.ai) installed
