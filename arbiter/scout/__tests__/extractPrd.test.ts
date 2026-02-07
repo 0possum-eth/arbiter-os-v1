@@ -60,7 +60,8 @@ test("extractPrd maps PRD metadata to scout envelope", async () => {
     assert.equal(sourceEntries[0].hash.length, 64);
 
     assert.equal(scout.metadata.scoutId, `scout-${sourceEntries[0].hash.slice(0, 12)}`);
-    assert.equal(scout.metadata.generatedAt, "1970-01-01T00:00:00.000Z");
+    assert.match(scout.metadata.generatedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.notEqual(scout.metadata.generatedAt, "1970-01-01T00:00:00.000Z");
     assert.equal("evidence" in scout.metadata, false);
     assert.equal("taskData" in scout.candidates[0], false);
   } finally {
@@ -79,6 +80,36 @@ test("extractPrd returns null when PRD metadata JSON is malformed", async () => 
     const output = await extractPrd({ baseDir: tempDir });
     assert.equal(output, null);
   } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("extractPrd emits deterministic metadata when ARBITER_DETERMINISTIC is enabled", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "extract-prd-deterministic-test-"));
+  const originalDeterministic = process.env.ARBITER_DETERMINISTIC;
+
+  try {
+    process.env.ARBITER_DETERMINISTIC = "true";
+    const prdDir = buildPrdDir(tempDir);
+    await fs.mkdir(prdDir, { recursive: true });
+    await fs.writeFile(
+      path.join(prdDir, "PRD_metadata.json"),
+      JSON.stringify({
+        summary: { problemStatement: "deterministic metadata" },
+        epic: { id: "EPIC-1", title: "Deterministic", tasks: ["Task"] }
+      }),
+      "utf8"
+    );
+
+    const output = await extractPrd({ baseDir: tempDir });
+    assert.ok(output);
+    assert.equal(output.metadata.generatedAt, "1970-01-01T00:00:00.000Z");
+  } finally {
+    if (originalDeterministic === undefined) {
+      delete process.env.ARBITER_DETERMINISTIC;
+    } else {
+      process.env.ARBITER_DETERMINISTIC = originalDeterministic;
+    }
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });

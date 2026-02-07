@@ -6,6 +6,11 @@ import { extractPrd } from "../scout/extractPrd";
 import { ingestResearch } from "../scout/researchIngest";
 import { synthesizePrd } from "../scout/synthesizePrd";
 
+const DETERMINISTIC_TS = "1970-01-01T00:00:00.000Z";
+
+const resolveGeneratedAt = () =>
+  process.env.ARBITER_DETERMINISTIC === "true" ? DETERMINISTIC_TS : new Date().toISOString();
+
 const readBullets = (lines: string[], header: string) => {
   const headerLine = `## ${header}`;
   const startIndex = lines.findIndex((line) => line.trim() === headerLine);
@@ -102,7 +107,7 @@ export async function runScout(): Promise<unknown> {
     metadata: {
       runId: getRunId(),
       scoutId: `scout-${getRunId()}`,
-      generatedAt: "1970-01-01T00:00:00.000Z",
+      generatedAt: resolveGeneratedAt(),
       confidence: "low"
     },
     summary: {

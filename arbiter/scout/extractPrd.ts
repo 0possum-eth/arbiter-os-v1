@@ -75,6 +75,10 @@ export type ExtractPrdOptions = {
 };
 
 const PRD_FILE_PATTERN = /^[A-Za-z0-9._-]+$/;
+const DETERMINISTIC_TS = "1970-01-01T00:00:00.000Z";
+
+const resolveGeneratedAt = () =>
+  process.env.ARBITER_DETERMINISTIC === "true" ? DETERMINISTIC_TS : new Date().toISOString();
 
 const assertValidPrdFileName = (fileName: string): string => {
   if (PRD_FILE_PATTERN.test(fileName)) {
@@ -201,7 +205,7 @@ export async function extractPrd(options: ExtractPrdOptions = {}): Promise<Scout
     metadata: {
       runId: getRunId(),
       scoutId: `scout-${sourceRef.hash.slice(0, 12)}`,
-      generatedAt: "1970-01-01T00:00:00.000Z",
+      generatedAt: resolveGeneratedAt(),
       confidence: "medium"
     },
     summary: {

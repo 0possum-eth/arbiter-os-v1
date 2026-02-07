@@ -23,6 +23,10 @@ type SynthesizePrdResult = {
 };
 
 const LABEL_PATTERN = /[^a-z0-9_-]/g;
+const DETERMINISTIC_TS = "1970-01-01T00:00:00.000Z";
+
+const resolveGeneratedAt = () =>
+  process.env.ARBITER_DETERMINISTIC === "true" ? DETERMINISTIC_TS : new Date().toISOString();
 
 const normalizeLabel = (label: string): string => {
   const normalized = label.trim().toLowerCase().replace(/\s+/g, "-").replace(LABEL_PATTERN, "");
@@ -69,6 +73,7 @@ export async function synthesizePrd(input: SynthesizePrdInput): Promise<Synthesi
     },
     synthesis: {
       label,
+      generatedAt: resolveGeneratedAt(),
       sources: sortedSources
     }
   };

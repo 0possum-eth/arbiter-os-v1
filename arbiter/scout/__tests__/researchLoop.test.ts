@@ -136,6 +136,11 @@ test("runScout synthesizes PRD artifacts when canonical metadata is missing", as
 
     const output = await runScout();
     assert.ok(output);
+    assert.match((output as { metadata?: { generatedAt?: string } }).metadata?.generatedAt ?? "", /^\d{4}-\d{2}-\d{2}T/);
+    assert.notEqual(
+      (output as { metadata?: { generatedAt?: string } }).metadata?.generatedAt,
+      "1970-01-01T00:00:00.000Z"
+    );
 
     const phaseDir = buildPhaseDir(tempDir);
     const metadataRaw = await fs.readFile(path.join(phaseDir, "PRD_scout_metadata.json"), "utf8");
@@ -150,6 +155,45 @@ test("runScout synthesizes PRD artifacts when canonical metadata is missing", as
     assert.deepEqual(metadata.epic.tasks, ["Ingest research", "Generate PRD artifacts"]);
   } finally {
     process.chdir(originalCwd);
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("runScout emits deterministic metadata when ARBITER_DETERMINISTIC is enabled", async () => {
+  const originalCwd = process.cwd();
+  const originalDeterministic = process.env.ARBITER_DETERMINISTIC;
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "scout-loop-deterministic-test-"));
+
+  try {
+    process.env.ARBITER_DETERMINISTIC = "true";
+    process.chdir(tempDir);
+    await fs.mkdir(path.join(tempDir, "docs", "arbiter"), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, "docs", "arbiter", "brainstorm.md"),
+      [
+        "## Problem",
+        "- Build deterministic scout metadata.",
+        "## Constraints",
+        "- Keep deterministic outputs.",
+        "## Unknowns",
+        "- none",
+        "## Epic",
+        "- Deterministic scout",
+        "## Tasks",
+        "- Emit deterministic metadata"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const output = await runScout();
+    assert.equal((output as { metadata?: { generatedAt?: string } }).metadata?.generatedAt, "1970-01-01T00:00:00.000Z");
+  } finally {
+    process.chdir(originalCwd);
+    if (originalDeterministic === undefined) {
+      delete process.env.ARBITER_DETERMINISTIC;
+    } else {
+      process.env.ARBITER_DETERMINISTIC = originalDeterministic;
+    }
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
