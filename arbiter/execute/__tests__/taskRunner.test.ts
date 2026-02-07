@@ -211,7 +211,8 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
       id: "TASK-GATED",
       query: "ship gated task",
       requiresIntegrationCheck: true,
-      uxSensitive: true
+      uxSensitive: true,
+      requiresOracleReview: true
     },
     {
       buildTaskPacket: async () => packet,
@@ -232,6 +233,14 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
           type: "UX_SIMULATED",
           taskId: packet.taskId,
           packet: { taskId: packet.taskId, passed: true, journey_checks: ["journey:task-flow"] }
+        });
+      },
+      runOracle: async (builtPacket) => {
+        assert.equal(builtPacket, packet);
+        emitted.push({
+          type: "ORACLE_REVIEWED",
+          taskId: packet.taskId,
+          packet: { taskId: packet.taskId, passed: true, findings: ["risk:ok"] }
         });
       },
       emitReceipt: async (receipt) => {
@@ -268,6 +277,11 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
       type: "UX_SIMULATED",
       taskId: "TASK-GATED",
       packet: { taskId: "TASK-GATED", passed: true, journey_checks: ["journey:task-flow"] }
+    },
+    {
+      type: "ORACLE_REVIEWED",
+      taskId: "TASK-GATED",
+      packet: { taskId: "TASK-GATED", passed: true, findings: ["risk:ok"] }
     }
   ]);
 });

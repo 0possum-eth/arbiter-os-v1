@@ -1,5 +1,6 @@
 import type {
   IntegrationPacket,
+  OraclePacket,
   TaskCompletionPacket,
   UxPacket,
   VerificationPacket
@@ -67,6 +68,12 @@ type UxSimulatedReceipt = {
   packet: UxPacket;
 };
 
+type OracleReviewedReceipt = {
+  type: "ORACLE_REVIEWED";
+  taskId: string;
+  packet: OraclePacket;
+};
+
 export type ReceiptType =
   | ScoutContractViolationReceipt["type"]
   | HaltAndAskReceipt["type"]
@@ -77,7 +84,8 @@ export type ReceiptType =
   | VerifierSpecReceipt["type"]
   | VerifierQualityReceipt["type"]
   | IntegrationCheckedReceipt["type"]
-  | UxSimulatedReceipt["type"];
+  | UxSimulatedReceipt["type"]
+  | OracleReviewedReceipt["type"];
 export type ReceiptPayload =
   | ScoutContractViolationReceipt
   | HaltAndAskReceipt
@@ -88,7 +96,8 @@ export type ReceiptPayload =
   | VerifierSpecReceipt
   | VerifierQualityReceipt
   | IntegrationCheckedReceipt
-  | UxSimulatedReceipt;
+  | UxSimulatedReceipt
+  | OracleReviewedReceipt;
 
 export type {
   ScoutContractViolationReceipt,
@@ -100,5 +109,6 @@ export type {
   VerifierSpecReceipt,
   VerifierQualityReceipt,
   IntegrationCheckedReceipt,
-  UxSimulatedReceipt
+  UxSimulatedReceipt,
+  OracleReviewedReceipt
 };

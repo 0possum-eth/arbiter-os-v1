@@ -19,6 +19,7 @@ type EpicRecord = {
     requiresInputReason?: string;
     requiresIntegrationCheck?: boolean;
     uxSensitive?: boolean;
+    requiresOracleReview?: boolean;
   }>;
 };
 
@@ -61,7 +62,8 @@ export async function ledgerKeeper(
 
   const evidence = verifyReceipts(receiptResult.receipts, taskId, {
     requiresIntegrationCheck: selectedTask.requiresIntegrationCheck === true,
-    uxSensitive: selectedTask.uxSensitive === true
+    uxSensitive: selectedTask.uxSensitive === true,
+    requiresOracleReview: selectedTask.requiresOracleReview === true
   });
   if (!evidence) {
     return { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" };
@@ -88,7 +90,8 @@ export async function ledgerKeeper(
           requiresInput: task.requiresInput,
           requiresInputReason: task.requiresInputReason,
           requiresIntegrationCheck: task.requiresIntegrationCheck,
-          uxSensitive: task.uxSensitive
+          uxSensitive: task.uxSensitive,
+          requiresOracleReview: task.requiresOracleReview
         }
       }
     });

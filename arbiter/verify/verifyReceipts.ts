@@ -4,6 +4,7 @@ import {
   MAX_EXECUTION_OUTPUT_SUMMARY_CHARS,
   type ExecutionRecord,
   type IntegrationPacket,
+  type OraclePacket,
   type TaskCompletionPacket,
   type UxPacket,
   type VerificationPacket
@@ -22,6 +23,7 @@ export type ReceiptEvidence = {
   verifier_receipt_ids: string[];
   integration_receipt_id?: string;
   ux_receipt_id?: string;
+  oracle_receipt_id?: string;
   execution: ExecutionRecord[];
   tests?: string[];
   files_changed?: string[];
@@ -30,6 +32,7 @@ export type ReceiptEvidence = {
 type VerifyReceiptOptions = {
   requiresIntegrationCheck?: boolean;
   uxSensitive?: boolean;
+  requiresOracleReview?: boolean;
 };
 
 type NormalizedEvidence = {
@@ -198,6 +201,26 @@ const asUxPacket = (value: unknown, taskId: string): UxPacket | null => {
   return value as UxPacket;
 };
 
+const asOraclePacket = (value: unknown, taskId: string): OraclePacket | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  if (!hasOnlyKeys(value, ["taskId", "passed", "findings"])) {
+    return null;
+  }
+  if (!hasOwn(value, "findings") || !isStringList(value.findings)) {
+    return null;
+  }
+  const findings = value.findings.map((item) => item.trim()).filter((item) => item.length > 0);
+  if (findings.length === 0 || findings.length !== value.findings.length) {
+    return null;
+  }
+  if (value.taskId !== taskId || value.passed !== true) {
+    return null;
+  }
+  return value as OraclePacket;
+};
+
 const findLastIndex = (receipts: ReceiptEnvelope[], predicate: (entry: ReceiptEnvelope) => boolean) => {
   for (let index = receipts.length - 1; index >= 0; index -= 1) {
     if (predicate(receipts[index])) {
@@ -280,6 +303,18 @@ export function verifyReceipts(
     }
   }
 
+  let oracleIndex = -1;
+  if (options.requiresOracleReview === true) {
+    oracleIndex = findLastIndexAfter(receipts, executorIndex, (entry) =>
+      entry.receipt.type === "ORACLE_REVIEWED" &&
+      entry.receipt.taskId === taskId &&
+      asOraclePacket(entry.receipt.packet, taskId) !== null
+    );
+    if (oracleIndex < 0) {
+      return null;
+    }
+  }
+
   const evidence: ReceiptEvidence = {
     executor_receipt_id: getReceiptId(receipts[executorIndex], executorIndex),
     execution: normalizedEvidence.execution,
@@ -294,6 +329,9 @@ export function verifyReceipts(
   }
   if (uxIndex >= 0) {
     evidence.ux_receipt_id = getReceiptId(receipts[uxIndex], uxIndex);
+  }
+  if (oracleIndex >= 0) {
+    evidence.oracle_receipt_id = getReceiptId(receipts[oracleIndex], oracleIndex);
   }
   if (normalizedEvidence.tests.length > 0) {
     evidence.tests = normalizedEvidence.tests;

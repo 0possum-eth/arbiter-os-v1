@@ -2,6 +2,7 @@ import { buildTaskPacket } from "./taskPacket";
 import { executeTaskStrategy } from "./executeTaskStrategy";
 import { emitReceipt } from "../receipts/emitReceipt";
 import { runElectrician } from "../phases/electrician";
+import { runOracle } from "../phases/oracle";
 import { runUxCoordinator } from "../phases/uxCoordinator";
 import { verifySpec } from "../verify/specVerifier";
 import { verifyQuality } from "../verify/qualityVerifier";
@@ -19,6 +20,7 @@ type TaskRecord = {
   noop?: boolean;
   requiresIntegrationCheck?: boolean;
   uxSensitive?: boolean;
+  requiresOracleReview?: boolean;
   strategyCommands?: StrategyCommand[];
 };
 
@@ -29,6 +31,7 @@ export type RunTaskDependencies = {
   verifyQuality: (packet: TaskPacket, completionPacket: TaskCompletionPacket) => Promise<VerificationPacket>;
   runElectrician: (packet: TaskPacket) => Promise<void>;
   runUxCoordinator: (packet: TaskPacket) => Promise<void>;
+  runOracle: (packet: TaskPacket) => Promise<void>;
   emitReceipt: (receipt: ReceiptPayload) => Promise<void>;
 };
 
@@ -39,6 +42,7 @@ const defaultRunTaskDependencies: RunTaskDependencies = {
   verifyQuality,
   runElectrician,
   runUxCoordinator,
+  runOracle,
   emitReceipt
 };
 
@@ -48,6 +52,7 @@ const normalizeTaskRecord = (task: Record<string, unknown>): TaskRecord => ({
   noop: task.noop === true,
   requiresIntegrationCheck: task.requiresIntegrationCheck === true,
   uxSensitive: task.uxSensitive === true,
+  requiresOracleReview: task.requiresOracleReview === true,
   strategyCommands: normalizeStrategyCommands(task.strategyCommands)
 });
 
@@ -122,6 +127,10 @@ export async function runTask(
 
   if (runtimeTask.uxSensitive === true) {
     await deps.runUxCoordinator(packet);
+  }
+
+  if (runtimeTask.requiresOracleReview === true) {
+    await deps.runOracle(packet);
   }
 
   return { type: "TASK_DONE" };

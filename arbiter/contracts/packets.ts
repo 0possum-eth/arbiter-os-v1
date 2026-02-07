@@ -35,3 +35,9 @@ export type UxPacket = {
   passed: boolean;
   journey_checks: string[];
 };
+
+export type OraclePacket = {
+  taskId: string;
+  passed: boolean;
+  findings: string[];
+};

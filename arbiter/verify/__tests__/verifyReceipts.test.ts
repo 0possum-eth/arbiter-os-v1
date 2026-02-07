@@ -331,7 +331,8 @@ test("verifyReceipts skips invalid latest verifier packet and keeps valid packet
 test("verifyReceipts enforces integration and ux packets for task gates", () => {
   const withoutTaskGates = verifyReceipts(validTaskPackets("TASK-1"), "TASK-1", {
     requiresIntegrationCheck: true,
-    uxSensitive: true
+    uxSensitive: true,
+    requiresOracleReview: true
   });
   assert.equal(withoutTaskGates, null);
 
@@ -353,10 +354,18 @@ test("verifyReceipts enforces integration and ux packets for task gates", () => 
           taskId: "TASK-1",
           packet: { taskId: "TASK-1", passed: true, journey_checks: ["journey:task-flow"] }
         }
+      },
+      {
+        id: "REC-ORACLE-1",
+        receipt: {
+          type: "ORACLE_REVIEWED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true, findings: ["risk:ok"] }
+        }
       }
     ],
     "TASK-1",
-    { requiresIntegrationCheck: true, uxSensitive: true }
+    { requiresIntegrationCheck: true, uxSensitive: true, requiresOracleReview: true }
   );
 
   assert.deepEqual(withTaskGates, {
@@ -364,6 +373,7 @@ test("verifyReceipts enforces integration and ux packets for task gates", () => 
     verifier_receipt_ids: ["REC-SPEC-1", "REC-QUALITY-1"],
     integration_receipt_id: "REC-INTEGRATION-1",
     ux_receipt_id: "REC-UX-1",
+    oracle_receipt_id: "REC-ORACLE-1",
     execution: [executionRecord("v22.0.0")],
     tests: ["arbiter/verify/__tests__/verifyReceipts.test.ts"],
     files_changed: ["arbiter/verify/verifyReceipts.ts"]
@@ -557,10 +567,54 @@ test("verifyReceipts rejects malformed integration and ux packet keys", () => {
             forged: true
           }
         }
+      },
+      {
+        id: "REC-ORACLE-BAD",
+        receipt: {
+          type: "ORACLE_REVIEWED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true, findings: ["risk:ok"], forged: true }
+        }
       }
     ],
     "TASK-1",
-    { requiresIntegrationCheck: true, uxSensitive: true }
+    { requiresIntegrationCheck: true, uxSensitive: true, requiresOracleReview: true }
+  );
+
+  assert.equal(result, null);
+});
+
+test("verifyReceipts rejects oracle packet without findings", () => {
+  const result = verifyReceipts(
+    [
+      ...validTaskPackets("TASK-1"),
+      {
+        id: "REC-INTEGRATION-1",
+        receipt: {
+          type: "INTEGRATION_CHECKED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      },
+      {
+        id: "REC-UX-1",
+        receipt: {
+          type: "UX_SIMULATED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true, journey_checks: ["journey:task-flow"] }
+        }
+      },
+      {
+        id: "REC-ORACLE-NO-FINDINGS",
+        receipt: {
+          type: "ORACLE_REVIEWED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      }
+    ],
+    "TASK-1",
+    { requiresIntegrationCheck: true, uxSensitive: true, requiresOracleReview: true }
   );
 
   assert.equal(result, null);

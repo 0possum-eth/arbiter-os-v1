@@ -18,7 +18,7 @@ const seedRunReceipts = async (
   rootDir: string,
   runId: string,
   taskId: string,
-  options: { includeIntegration?: boolean; includeUx?: boolean } = {}
+  options: { includeIntegration?: boolean; includeUx?: boolean; includeOracle?: boolean } = {}
 ) => {
   const receiptsDir = path.join(rootDir, "docs", "arbiter", "_ledger", "runs", runId);
   await fs.promises.mkdir(receiptsDir, { recursive: true });
@@ -61,6 +61,17 @@ const seedRunReceipts = async (
         type: "UX_SIMULATED",
         taskId,
         packet: { taskId, passed: true, journey_checks: ["journey:task-flow"] }
+      }
+    });
+  }
+
+  if (options.includeOracle === true) {
+    entries.push({
+      id: "REC-ORACLE-1",
+      receipt: {
+        type: "ORACLE_REVIEWED",
+        taskId,
+        packet: { taskId, passed: true, findings: ["risk:ok"] }
       }
     });
   }
@@ -320,6 +331,65 @@ test("ledgerKeeper enforces ux receipt for ux-sensitive tasks", async () => {
       .map((line) => JSON.parse(line) as { op?: string; data?: Record<string, unknown> });
     const taskDone = events.find((event) => event.op === "task_done");
     assert.equal((taskDone?.data?.evidence as { ux_receipt_id?: string } | undefined)?.ux_receipt_id, "REC-UX-1");
+  } finally {
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+    process.chdir(original);
+  }
+});
+
+test("ledgerKeeper enforces oracle receipt for oracle-reviewed tasks", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-ledger-keeper-oracle-gate-"));
+  const cwdDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-ledger-keeper-cwd-"));
+  const original = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  process.env.ARBITER_RUN_ID = "RUN-1";
+  process.chdir(cwdDir);
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(prdDir, "prd.json"),
+      JSON.stringify({
+        activeEpicId: "EPIC-1",
+        epics: [
+          {
+            id: "EPIC-1",
+            tasks: [{ id: "TASK-1", requiresOracleReview: true }]
+          }
+        ]
+      }),
+      "utf8"
+    );
+
+    await seedRunReceipts(tempDir, "RUN-1", "TASK-1", { includeIntegration: true, includeUx: true });
+
+    const ledgerPath = path.join(tempDir, "docs", "arbiter", "_ledger", "prd.events.jsonl");
+    const withoutOracle = await ledgerKeeper(ledgerPath, "EPIC-1", "TASK-1");
+    assert.deepEqual(withoutOracle, { status: "HALT_AND_ASK", reason: "VERIFICATION_REQUIRED" });
+
+    await seedRunReceipts(tempDir, "RUN-1", "TASK-1", {
+      includeIntegration: true,
+      includeUx: true,
+      includeOracle: true
+    });
+    const withOracle = await ledgerKeeper(ledgerPath, "EPIC-1", "TASK-1");
+    assert.deepEqual(withOracle, { status: "OK" });
+
+    const events = (await fs.promises.readFile(ledgerPath, "utf8"))
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { op?: string; data?: Record<string, unknown> });
+    const taskDone = events.find((event) => event.op === "task_done");
+    assert.equal(
+      (taskDone?.data?.evidence as { oracle_receipt_id?: string } | undefined)?.oracle_receipt_id,
+      "REC-ORACLE-1"
+    );
   } finally {
     if (originalRunId === undefined) {
       delete process.env.ARBITER_RUN_ID;
