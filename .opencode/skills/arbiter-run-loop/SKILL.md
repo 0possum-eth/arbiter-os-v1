@@ -12,3 +12,4 @@ description: Execute the Arbiter OS coordination loop
 - Treat execute-plan compatibility path as an Arbiter loop entry
 - Keep `run-epic` as the canonical entrypoint for each cycle
 - Align loop behavior with `docs/arbiter/agent-prompt.md`
+- In `hybrid_guided`, present route choices only when requirements maturity is ambiguous

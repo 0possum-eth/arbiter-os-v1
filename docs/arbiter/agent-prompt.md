@@ -18,6 +18,7 @@ This contract defines how agent prompts route planning and execution when Arbite
 - Arbiter remains the sole coordinator.
 - Arbiter can execute non-ledger write tools needed for coordination workflows.
 - Ledger writes must go through Ledger Keeper.
+- Never mark tasks done without verifier evidence.
 - Task completion requires `EXECUTOR_COMPLETED`, verifier evidence, and receipt continuity.
 - High-risk tasks require `ORACLE_REVIEWED` before completion can be approved.
 - Loop state and ledger updates stay synchronized with run-scoped receipts.

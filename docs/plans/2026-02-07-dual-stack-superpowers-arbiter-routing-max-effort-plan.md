@@ -118,10 +118,10 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 13 - Add tests for each route + prompt copy snapshot freeze
 
 ### Phase D: Superpowers/Arbiter Interplay
-- [ ] Task 14 - Update `run-epic`/`execute-plan` docs and skills for dual-stack routing
-- [ ] Task 15 - Ensure Superpowers flows remain callable in `superpowers_core`
-- [ ] Task 16 - Ensure done-gating mandatory in `arbiter_core` + `hybrid_guided`
-- [ ] Task 17 - Add routing-doc drift tests
+- [x] Task 14 - Update `run-epic`/`execute-plan` docs and skills for dual-stack routing
+- [x] Task 15 - Ensure Superpowers flows remain callable in `superpowers_core`
+- [x] Task 16 - Ensure done-gating mandatory in `arbiter_core` + `hybrid_guided`
+- [x] Task 17 - Add routing-doc drift tests
 
 ### Phase E: Dependency Automation
 - [ ] Task 18 - Add runtime doctor + installer planner
