@@ -48,6 +48,9 @@ Run all required checks from repository root:
 10. `bash tests/arbiter/test-no-legacy-runtime-refs.sh`
 11. `bash tests/arbiter/test-ledger-replay.sh`
 12. `bash tests/arbiter/test-readiness-scores.sh`
+13. `bash tests/arbiter/test-agent-contracts-sync.sh`
+14. `bash tests/arbiter/test-branding-active-docs.sh`
+15. `bash tests/arbiter/test-run-epic-e2e.sh`
 
 Primary evidence paths validated by the checks:
 
@@ -76,8 +79,8 @@ If any condition fails, release status is **BLOCKED** until the failing check is
 <!-- readiness-metadata:start -->
 ## Evidence Metadata
 
-- generatedAt: 2026-02-07T02:01:53.087Z
-- sourceCommit: 881bc47b18e954da6b1303f54777fef9e275da17
+- generatedAt: 2026-02-07T02:08:40.981Z
+- sourceCommit: 1aace11fbff754f8c354997279dc16c652bb2954
 
 ### Category Evidence Inputs
 
