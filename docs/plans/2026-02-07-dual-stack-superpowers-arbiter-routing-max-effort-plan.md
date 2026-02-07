@@ -124,9 +124,9 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 17 - Add routing-doc drift tests
 
 ### Phase E: Dependency Automation
-- [ ] Task 18 - Add runtime doctor + installer planner
-- [ ] Task 19 - Add consented auto-install executor + receipts
-- [ ] Task 20 - Add no-git/no-node/no-toolchain tests
+- [x] Task 18 - Add runtime doctor + installer planner
+- [x] Task 19 - Add consented auto-install executor + receipts
+- [x] Task 20 - Add no-git/no-node/no-toolchain tests
 
 ### Phase F: Truthful Status + Anti-False-Success
 - [ ] Task 21 - Extend `arbiter-status` with evidence health/provenance

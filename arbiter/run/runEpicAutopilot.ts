@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 import { arbiterDecision } from "../decisions/arbiterDecision";
 import { bundleTasks, type BundleTask } from "../execute/bundleStrategy";
@@ -11,7 +12,10 @@ import { runScout } from "../phases/scout";
 import { runUxCoordinator } from "../phases/uxCoordinator";
 import { emitReceipt } from "../receipts/emitReceipt";
 import { markRunCompleted, markRunStarted } from "../receipts/runLifecycle";
-import type { ReceiptPayload } from "../receipts/types";
+import { createHaltAndAskReceipt, type ReceiptPayload } from "../receipts/types";
+import { buildInstallPlan, type InstallPlan } from "../preflight/installPlanner";
+import { executeInstallPlan } from "../preflight/installExecutor";
+import { runRuntimeDoctor, type RuntimeDoctorResult } from "../preflight/runtimeDoctor";
 import {
   resolveWorkflowExecutionProfile,
   resolveWorkflowMode,
@@ -43,7 +47,33 @@ type PrdState = {
 
 type RunEpicOptions = {
   workflowMode?: WorkflowMode | string;
+  preflight?: {
+    consentGranted: boolean;
+    doctor: () => Promise<RuntimeDoctorResult>;
+    planner: (doctorResult: RuntimeDoctorResult) => InstallPlan;
+    executor: (plan: InstallPlan) => Promise<{ receipt: ReceiptPayload }>;
+  };
 };
+
+const runShellCommand = async (command: string): Promise<{ exitCode: number; stdout: string; stderr: string }> => {
+  const result = spawnSync(command, { shell: true, encoding: "utf8" });
+  return {
+    exitCode: result.status ?? 1,
+    stdout: typeof result.stdout === "string" ? result.stdout : "",
+    stderr: typeof result.stderr === "string" ? result.stderr : ""
+  };
+};
+
+const buildDefaultPreflight = (): NonNullable<RunEpicOptions["preflight"]> => ({
+  consentGranted: process.env.ARBITER_AUTO_INSTALL_CONSENT === "true",
+  doctor: async () => runRuntimeDoctor({ rootDir: process.cwd() }),
+  planner: (doctorResult) => buildInstallPlan(doctorResult),
+  executor: async (plan) =>
+    executeInstallPlan(plan, {
+      consentGranted: true,
+      runner: runShellCommand
+    })
+});
 
 const getBundleLimit = async (maxBundleSize: number): Promise<number> => {
   const prdPath = path.join(process.cwd(), "docs", "arbiter", "prd.json");
@@ -77,6 +107,47 @@ export async function runEpicAutopilot(options: RunEpicOptions = {}): Promise<Ru
     const workflowProfile = resolveWorkflowExecutionProfile(workflowMode, {
       continuousEnv: process.env.ARBITER_CONTINUOUS === "true"
     });
+    const preflight = options.preflight ?? buildDefaultPreflight();
+    const preflightResult = await preflight.doctor();
+    if (!preflightResult.envReady) {
+      const installPlan = preflight.planner(preflightResult);
+      if (!preflight.consentGranted) {
+        const haltReceipt = createHaltAndAskReceipt({
+          reason: "ENV_NOT_READY",
+          question: "Missing runtime dependencies detected. Allow assisted install to continue?",
+          options: [
+            {
+              id: "allow_install",
+              label: "Allow install",
+              description: "Install missing prerequisites and toolchain"
+            },
+            {
+              id: "manual_setup",
+              label: "Manual setup",
+              description: "I will install dependencies manually"
+            }
+          ]
+        });
+        await emitReceipt(haltReceipt);
+        return { type: "HALT_AND_ASK", receipt: haltReceipt };
+      }
+
+      if (installPlan.actions.length > 0) {
+        const installResult = await preflight.executor(installPlan);
+        await emitReceipt(installResult.receipt);
+      }
+
+      const postInstallResult = await preflight.doctor();
+      if (!postInstallResult.envReady) {
+        const haltReceipt = createHaltAndAskReceipt({
+          reason: "ENV_NOT_READY",
+          question: "Assisted install completed but dependencies are still missing. Please finish setup manually."
+        });
+        await emitReceipt(haltReceipt);
+        return { type: "HALT_AND_ASK", receipt: haltReceipt };
+      }
+    }
+
     const continuousMode = workflowProfile.continuousMode;
     const state = await inspectState();
 

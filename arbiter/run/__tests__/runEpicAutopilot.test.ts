@@ -707,3 +707,123 @@ test("runEpicAutopilot batch_validation mode finalizes without ARBITER_CONTINUOU
     }
   }
 });
+
+test("runEpicAutopilot halts when preflight dependencies are missing without consent", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-preflight-halt-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  process.chdir(tempDir);
+  const runId = "run-e2e-preflight-halt";
+  process.env.ARBITER_RUN_ID = runId;
+
+  try {
+    const run = await runEpicAutopilot({
+      preflight: {
+        consentGranted: false,
+        doctor: async () => ({
+          envReady: false,
+          missingPrerequisites: ["git"],
+          missingToolchain: []
+        }),
+        planner: () => ({ actions: [{ id: "install-git", target: "git", command: "echo git" }] }),
+        executor: async () => {
+          throw new Error("executor should not run without consent");
+        }
+      }
+    });
+
+    assert.equal(run.type, "HALT_AND_ASK");
+    assert.equal(run.receipt.type, "HALT_AND_ASK");
+    assert.equal(run.receipt.reason, "ENV_NOT_READY");
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+  }
+});
+
+test("runEpicAutopilot executes assisted install when consent is granted", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-e2e-preflight-install-"));
+  const originalCwd = process.cwd();
+  const originalRunId = process.env.ARBITER_RUN_ID;
+  process.chdir(tempDir);
+  const runId = "run-e2e-preflight-install";
+  process.env.ARBITER_RUN_ID = runId;
+
+  let doctorCalls = 0;
+  let installExecuted = false;
+
+  try {
+    const prdDir = path.join(tempDir, "docs", "arbiter");
+    await fs.promises.mkdir(prdDir, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(prdDir, "prd.json"),
+      `${JSON.stringify({ activeEpicId: "EPIC-1", epics: [{ id: "EPIC-1", done: false, tasks: [] }] }, null, 2)}\n`,
+      "utf8"
+    );
+
+    const run = await runEpicAutopilot({
+      preflight: {
+        consentGranted: true,
+        doctor: async () => {
+          doctorCalls += 1;
+          if (doctorCalls === 1) {
+            return {
+              envReady: false,
+              missingPrerequisites: ["git"],
+              missingToolchain: []
+            };
+          }
+          return {
+            envReady: true,
+            missingPrerequisites: [],
+            missingToolchain: []
+          };
+        },
+        planner: () => ({ actions: [{ id: "install-git", target: "git", command: "echo git" }] }),
+        executor: async () => {
+          installExecuted = true;
+          return {
+            receipt: {
+              type: "INSTALL_ATTEMPTED",
+              results: [
+                {
+                  id: "install-git",
+                  target: "git",
+                  command: "echo git",
+                  succeeded: true,
+                  exitCode: 0
+                }
+              ]
+            }
+          };
+        }
+      }
+    });
+
+    assert.equal(installExecuted, true);
+    assert.equal(doctorCalls >= 2, true);
+    const receiptsPath = path.join(
+      tempDir,
+      "docs",
+      "arbiter",
+      "_ledger",
+      "runs",
+      runId,
+      "receipts.jsonl"
+    );
+    const receipts = await readReceipts(receiptsPath);
+    const types = receipts.map((entry) => entry.receipt.type);
+    assert.ok(types.includes("INSTALL_ATTEMPTED"));
+  } finally {
+    process.chdir(originalCwd);
+    if (originalRunId === undefined) {
+      delete process.env.ARBITER_RUN_ID;
+    } else {
+      process.env.ARBITER_RUN_ID = originalRunId;
+    }
+  }
+});

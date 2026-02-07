@@ -83,6 +83,19 @@ type OracleReviewedReceipt = {
   packet: OraclePacket;
 };
 
+type InstallAttemptedResult = {
+  id: string;
+  target: string;
+  command: string;
+  succeeded: boolean;
+  exitCode: number;
+};
+
+type InstallAttemptedReceipt = {
+  type: "INSTALL_ATTEMPTED";
+  results: InstallAttemptedResult[];
+};
+
 export type ReceiptType =
   | ScoutContractViolationReceipt["type"]
   | HaltAndAskReceipt["type"]
@@ -94,7 +107,8 @@ export type ReceiptType =
   | VerifierQualityReceipt["type"]
   | IntegrationCheckedReceipt["type"]
   | UxSimulatedReceipt["type"]
-  | OracleReviewedReceipt["type"];
+  | OracleReviewedReceipt["type"]
+  | InstallAttemptedReceipt["type"];
 export type ReceiptPayload =
   | ScoutContractViolationReceipt
   | HaltAndAskReceipt
@@ -106,7 +120,8 @@ export type ReceiptPayload =
   | VerifierQualityReceipt
   | IntegrationCheckedReceipt
   | UxSimulatedReceipt
-  | OracleReviewedReceipt;
+  | OracleReviewedReceipt
+  | InstallAttemptedReceipt;
 
 export type {
   HaltRouteOption,
@@ -120,7 +135,9 @@ export type {
   VerifierQualityReceipt,
   IntegrationCheckedReceipt,
   UxSimulatedReceipt,
-  OracleReviewedReceipt
+  OracleReviewedReceipt,
+  InstallAttemptedReceipt,
+  InstallAttemptedResult
 };
 
 type CreateHaltAndAskReceiptInput = {
