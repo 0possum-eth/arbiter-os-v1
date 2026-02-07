@@ -1,3 +1,5 @@
+import { semanticCoverage } from "./retrievalSemantic";
+
 export type IndexedBrick = {
   path: string;
   heading: string;
@@ -9,6 +11,8 @@ export type IndexedBrick = {
 
 type ScoredBrick = {
   brick: IndexedBrick;
+  lexicalScore: number;
+  semanticScore: number;
   baseScore: number;
   noveltyTerms: string[];
 };
@@ -17,8 +21,10 @@ const PATH_WEIGHT = 1.5;
 const HEADING_WEIGHT = 3;
 const CONTENT_WEIGHT = 1;
 const COVERAGE_BOOST = 4;
-const PATH_DIVERSITY_PENALTY = 2.5;
-const NOVELTY_PENALTY = 1.5;
+const LEXICAL_WEIGHT = 0.7;
+const SEMANTIC_WEIGHT = 0.3;
+const PATH_DIVERSITY_PENALTY = 0.2;
+const NOVELTY_PENALTY = 0.12;
 
 const buildCounts = (terms: string[]) => {
   const counts = new Map<string, number>();
@@ -50,6 +56,7 @@ const scoreBrick = (brick: IndexedBrick, queryTerms: string[]): ScoredBrick | nu
 
   let relevance = 0;
   let matchedTerms = 0;
+  const semanticScore = semanticCoverage(queryTerms, [...pathTerms, ...headingTerms, ...contentTerms]);
 
   for (const term of queryTerms) {
     const pathHits = pathCounts.get(term) ?? 0;
@@ -66,15 +73,21 @@ const scoreBrick = (brick: IndexedBrick, queryTerms: string[]): ScoredBrick | nu
     }
   }
 
-  if (matchedTerms === 0) {
+  if (matchedTerms === 0 && semanticScore === 0) {
     return null;
   }
 
   const coverage = matchedTerms / queryTerms.length;
-  const baseScore = relevance + coverage * COVERAGE_BOOST;
+  const lexicalRaw = relevance + coverage * COVERAGE_BOOST;
+  const lexicalMax =
+    queryTerms.length * (PATH_WEIGHT + HEADING_WEIGHT + Math.min(4, 4) * CONTENT_WEIGHT + COVERAGE_BOOST);
+  const lexicalScore = lexicalMax > 0 ? lexicalRaw / lexicalMax : 0;
+  const baseScore = lexicalScore * LEXICAL_WEIGHT + semanticScore * SEMANTIC_WEIGHT;
 
   return {
     brick,
+    lexicalScore,
+    semanticScore,
     baseScore,
     noveltyTerms: unique([...headingTerms, ...contentTerms])
   };
@@ -82,6 +95,8 @@ const scoreBrick = (brick: IndexedBrick, queryTerms: string[]): ScoredBrick | nu
 
 const compareScored = (left: ScoredBrick, right: ScoredBrick) => {
   if (right.baseScore !== left.baseScore) return right.baseScore - left.baseScore;
+  if (right.semanticScore !== left.semanticScore) return right.semanticScore - left.semanticScore;
+  if (right.lexicalScore !== left.lexicalScore) return right.lexicalScore - left.lexicalScore;
   if (left.brick.path !== right.brick.path) return left.brick.path.localeCompare(right.brick.path);
   return left.brick.heading.localeCompare(right.brick.heading);
 };

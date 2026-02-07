@@ -105,6 +105,7 @@ test("indexBricks includes nested markdown files and deterministic ordering", as
     const results = await retrieveBricks(indexPath, "phase 2 spec", 1);
     assert.equal(results.length, 1);
     assert.equal(results[0].path, nestedDoc);
+    assert.equal(results[0].path.endsWith(path.join("phase-02", "spec.md")), true);
 
     await indexBricks(docsDir, indexPath);
     const secondIndex = await fs.promises.readFile(indexPath, "utf8");

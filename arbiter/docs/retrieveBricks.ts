@@ -3,6 +3,11 @@ import fs from "node:fs";
 import { rankBricks, type IndexedBrick } from "./retrievalScoring";
 
 export async function retrieveBricks(indexPath: string, query: string, limit = 3) {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length === 0) {
+    return [];
+  }
+
   const content = await fs.promises.readFile(indexPath, "utf8");
   const bricks = content
     .trim()
@@ -10,5 +15,5 @@ export async function retrieveBricks(indexPath: string, query: string, limit = 3
     .filter(Boolean)
     .map((line) => JSON.parse(line) as IndexedBrick);
 
-  return rankBricks(bricks, query, limit);
+  return rankBricks(bricks, normalizedQuery, limit);
 }
