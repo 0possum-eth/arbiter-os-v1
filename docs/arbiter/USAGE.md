@@ -18,6 +18,15 @@ This guide covers the operational commands used during an Arbiter OS run in Open
 - Snapshot status returns one of: `NO_ACTIVE_EPIC`, `ACTIVE_EPIC` (with `epicId`), `NO_MORE_WORK`
 - Command contract: [`commands/arbiter-status.md`](../../commands/arbiter-status.md)
 
+## Workflow-Mode Usage
+
+`workflow-mode` controls the active orchestration routing profile.
+
+- Use `workflow-mode` with no argument to inspect current profile.
+- Set one of: `hybrid_guided`, `superpowers_core`, `arbiter_core`.
+- `run-epic` uses this profile when deciding whether to route through guided intake, core Superpowers flow, or Arbiter-first execution.
+- Command contract: [`commands/workflow-mode.md`](../../commands/workflow-mode.md)
+
 ## Run-Epic + Arbiter-Status + Trust Flow
 
 Use trust commands inside the `run-epic` loop before behavior-doc execution:

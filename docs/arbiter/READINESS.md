@@ -32,6 +32,14 @@ Audit scope: `core arbiter build plan.md` criteria mapped to repository evidence
 | Scout/research-to-PRD loop | `arbiter/scout/extractPrd.ts`, `arbiter/scout/candidateScoring.ts`, `arbiter/decisions/arbiterDecision.ts` |
 | Install/docs/runtime migration readiness | `.opencode/INSTALL.md`, `docs/README.opencode.md`, `scripts/arbiter/install-opencode.ps1` |
 
+## Core Build Plan Parity
+
+- Role separation: Arbiter coordinates, Executor implements, Verifiers validate, and Ledger Keeper performs final commit authority.
+- No done without verifier evidence: completion requires executor + verifier receipts before ledger `task_done` is accepted.
+- `run-epic` canonical entrypoint: orchestration contracts and command docs keep `run-epic` as primary loop command.
+- `execute-plan` compatibility path: compatibility routing remains documented and covered by command tests.
+- Trust gating remains enforced: behavior docs are untrusted by default unless explicitly approved.
+
 ## Verification Evidence
 
 Run all required checks from repository root:
