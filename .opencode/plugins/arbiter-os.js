@@ -113,7 +113,9 @@ export const ArbiterOsPlugin = async () => ({
     }
   },
   "experimental.session.compacting": async () => ({
-    summary: await buildCompactionSummary()
+    summary: await buildCompactionSummary({
+      now: process.env.ARBITER_MEMORY_POLICY_NOW
+    })
   }),
   stop: async () => {
     if (isEpicIncomplete()) {

@@ -88,6 +88,25 @@ export async function readMemoryEntries(
   return entries;
 }
 
+export async function readAllMemoryEntries(options: MemoryOptions = {}): Promise<MemoryEntry[]> {
+  const allEntries: MemoryEntry[] = [];
+  for (const scope of MEMORY_SCOPES) {
+    const entries = await readMemoryEntries(scope, options);
+    allEntries.push(...entries);
+  }
+  return allEntries;
+}
+
+export async function rewriteMemoryEntries(entries: MemoryEntry[], options: MemoryOptions = {}): Promise<void> {
+  for (const scope of MEMORY_SCOPES) {
+    const memoryPath = resolveMemoryPath(scope, options);
+    await fs.promises.mkdir(path.dirname(memoryPath), { recursive: true });
+    const scopedEntries = entries.filter((entry) => entry.scope === scope);
+    const content = scopedEntries.map((entry) => JSON.stringify(entry)).join("\n");
+    await fs.promises.writeFile(memoryPath, content.length > 0 ? `${content}\n` : "", "utf8");
+  }
+}
+
 export async function readLatestMemoryByScope(
   options: MemoryOptions = {}
 ): Promise<Partial<Record<MemoryScope, MemoryEntry>>> {

@@ -1,4 +1,5 @@
-import { MEMORY_SCOPES, readLatestMemoryByScope } from "./store";
+import { MEMORY_SCOPES, readAllMemoryEntries, readLatestMemoryByScope, rewriteMemoryEntries } from "./store";
+import { applyMemoryPolicy } from "./policy";
 
 const FALLBACK_SUMMARY = "Arbiter OS active: run-epic coordinator enabled";
 
@@ -29,7 +30,20 @@ function summarizeData(value: unknown): string {
   return normalized.slice(0, 160);
 }
 
-export async function buildCompactionSummary(options: { cwd?: string } = {}): Promise<string> {
+export async function buildCompactionSummary(
+  options: { cwd?: string; now?: string; applyPolicy?: boolean } = {}
+): Promise<string> {
+  if (options.applyPolicy !== false) {
+    const entries = await readAllMemoryEntries(options);
+    if (entries.length > 0) {
+      const policyResult = applyMemoryPolicy({
+        now: options.now ?? new Date().toISOString(),
+        entries
+      });
+      await rewriteMemoryEntries(policyResult, options);
+    }
+  }
+
   const latest = await readLatestMemoryByScope(options);
   const hasAny = MEMORY_SCOPES.some((scope) => latest[scope]);
   if (!hasAny) {
