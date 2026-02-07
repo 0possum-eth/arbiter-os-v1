@@ -15,9 +15,11 @@ export async function executeTaskStrategy(packet: TaskPacket): Promise<TaskCompl
       args: ["--version"]
     }
   ];
-  const tests = await executeStrategyCommands(commands);
+  const execution = await executeStrategyCommands(commands);
+  const tests = execution.map((record) => `executed:${record.command}: ${record.outputSummary}`);
   return {
     taskId: packet.taskId,
+    execution,
     tests,
     files_changed: filesChanged
   };

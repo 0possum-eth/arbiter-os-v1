@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 
 import { verifySpec } from "../specVerifier";
 import { verifyQuality } from "../qualityVerifier";
+
+const digestForSummary = (summary: string) => createHash("sha256").update(summary, "utf8").digest("hex");
 
 test("default verifiers require execution evidence", async () => {
   const packet = {
@@ -20,6 +23,14 @@ test("default verifiers require execution evidence", async () => {
 
   const withEvidence = {
     taskId: "TASK-1",
+    execution: [
+      {
+        command: "node --version",
+        exitCode: 0,
+        outputSummary: "v22.0.0",
+        outputDigest: digestForSummary("v22.0.0")
+      }
+    ],
     tests: ["executed:node --version: v22.0.0"],
     files_changed: ["arbiter/verify/specVerifier.ts"]
   };
@@ -27,6 +38,16 @@ test("default verifiers require execution evidence", async () => {
   const qualityPass = await verifyQuality(packet, withEvidence);
   assert.equal(specPass.passed, true);
   assert.equal(qualityPass.passed, true);
+
+  const testsOnlyEvidence = {
+    taskId: "TASK-1",
+    tests: ["executed:node --version: v22.0.0"],
+    files_changed: ["arbiter/verify/specVerifier.ts"]
+  };
+  const specTestsOnlyFail = await verifySpec(packet, testsOnlyEvidence);
+  const qualityTestsOnlyFail = await verifyQuality(packet, testsOnlyEvidence);
+  assert.equal(specTestsOnlyFail.passed, false);
+  assert.equal(qualityTestsOnlyFail.passed, false);
 
   const blankEvidence = {
     taskId: "TASK-1",
@@ -49,7 +70,15 @@ test("default verifiers reject forged or malformed evidence entries", async () =
 
   const forgedCommandEvidence = {
     taskId: "TASK-1",
-    tests: ["simulated:TASK-1"],
+    execution: [
+      {
+        command: "node --version",
+        exitCode: 0,
+        outputSummary: "v22.0.0",
+        outputDigest: "0".repeat(64)
+      }
+    ],
+    tests: ["executed:node --version: v22.0.0"],
     files_changed: ["arbiter/verify/specVerifier.ts"]
   };
   const specForgedFail = await verifySpec(packet, forgedCommandEvidence);
@@ -59,6 +88,14 @@ test("default verifiers reject forged or malformed evidence entries", async () =
 
   const malformedFileEvidence = {
     taskId: "TASK-1",
+    execution: [
+      {
+        command: "node --version",
+        exitCode: 0,
+        outputSummary: "v22.0.0",
+        outputDigest: digestForSummary("v22.0.0")
+      }
+    ],
     tests: ["executed:node --version: v22.0.0"],
     files_changed: ["specVerifier"]
   };
@@ -69,6 +106,14 @@ test("default verifiers reject forged or malformed evidence entries", async () =
 
   const whitespacePaddedEvidence = {
     taskId: "TASK-1",
+    execution: [
+      {
+        command: "node --version",
+        exitCode: 0,
+        outputSummary: "  v22.0.0  ",
+        outputDigest: digestForSummary("v22.0.0")
+      }
+    ],
     tests: ["  executed:node --version: v22.0.0  "],
     files_changed: ["  arbiter/verify/specVerifier.ts  "]
   };

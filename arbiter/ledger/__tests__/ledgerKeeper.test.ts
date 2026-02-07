@@ -1,10 +1,18 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
 import { ledgerKeeper } from "../ledgerKeeper";
+
+const executionRecord = (summary: string) => ({
+  command: "node --version",
+  exitCode: 0,
+  outputSummary: summary,
+  outputDigest: createHash("sha256").update(summary, "utf8").digest("hex")
+});
 
 const seedRunReceipts = async (
   rootDir: string,
@@ -23,6 +31,7 @@ const seedRunReceipts = async (
         taskId,
         packet: {
           taskId,
+          execution: [executionRecord("v22.0.0")],
           tests: ["arbiter/ledger/__tests__/ledgerKeeper.test.ts"],
           files_changed: ["arbiter/ledger/ledgerKeeper.ts", "arbiter/verify/verifyReceipts.ts"]
         }
@@ -100,6 +109,7 @@ test("ledgerKeeper writes task_done when receipts are valid", async () => {
     assert.deepEqual(taskDone?.data?.evidence, {
       executor_receipt_id: "REC-EXECUTOR-1",
       verifier_receipt_ids: ["REC-SPEC-1", "REC-QUALITY-1"],
+      execution: [executionRecord("v22.0.0")],
       tests: ["arbiter/ledger/__tests__/ledgerKeeper.test.ts"],
       files_changed: ["arbiter/ledger/ledgerKeeper.ts", "arbiter/verify/verifyReceipts.ts"]
     });

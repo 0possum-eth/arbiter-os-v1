@@ -1,18 +1,22 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
+import { computeExecutionDigest, MAX_EXECUTION_OUTPUT_SUMMARY_CHARS } from "../contracts/packets";
+import type { ExecutionRecord } from "../contracts/packets";
 import type { StrategyCommand } from "./taskPacket";
 
 type CommandRunResult = {
   commandLine: string;
-  output: string;
+  outputSummary: string;
+  outputDigest: string;
+  exitCode: number;
 };
 
 const renderCommand = (command: StrategyCommand) =>
   [command.command, ...(command.args ?? [])].join(" ").trim();
 
 const truncate = (value: string, maxLength: number) =>
-  value.length <= maxLength ? value : `${value.slice(0, maxLength)}...`;
+  value.length <= maxLength ? value : `${value.slice(0, Math.max(maxLength - 3, 0))}...`;
 
 const ALLOWED_COMMANDS = new Set([process.execPath]);
 
@@ -20,6 +24,7 @@ const DISALLOWED_NODE_FLAGS = new Set(["-e", "--eval", "-p", "--print"]);
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 4_096;
+const MAX_SUMMARY_CHARS = MAX_EXECUTION_OUTPUT_SUMMARY_CHARS;
 
 const resolveTimeoutMs = () => {
   const raw = process.env.ARBITER_STRATEGY_TIMEOUT_MS;
@@ -133,19 +138,27 @@ const runCommand = (command: StrategyCommand): Promise<CommandRunResult> =>
         return;
       }
 
-      const output = [stdout, stderr].find((value) => value.trim().length > 0)?.trim() ?? "(no output)";
+      const output = [stdout.trim(), stderr.trim()].filter((value) => value.length > 0).join("\n") || "(no output)";
+      const outputSummary = truncate(output, MAX_SUMMARY_CHARS);
       resolve({
         commandLine,
-        output: truncate(output, 200)
+        outputSummary,
+        outputDigest: computeExecutionDigest(outputSummary),
+        exitCode: code ?? 0
       });
     });
   });
 
-export async function executeStrategyCommands(commands: StrategyCommand[]): Promise<string[]> {
-  const evidence: string[] = [];
+export async function executeStrategyCommands(commands: StrategyCommand[]): Promise<ExecutionRecord[]> {
+  const evidence: ExecutionRecord[] = [];
   for (const command of commands) {
     const result = await runCommand(command);
-    evidence.push(`executed:${result.commandLine}: ${result.output}`);
+    evidence.push({
+      command: result.commandLine,
+      exitCode: result.exitCode,
+      outputSummary: result.outputSummary,
+      outputDigest: result.outputDigest
+    });
   }
   return evidence;
 }

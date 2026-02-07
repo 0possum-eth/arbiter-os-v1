@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +7,13 @@ import { test } from "node:test";
 
 import { indexBricks } from "../../docs/indexBricks";
 import { runEpicAutopilot } from "../runEpicAutopilot";
+
+const executionRecord = (summary: string) => ({
+  command: "node --version",
+  exitCode: 0,
+  outputSummary: summary,
+  outputDigest: createHash("sha256").update(summary, "utf8").digest("hex")
+});
 
 const readReceipts = async (receiptsPath: string) => {
   const content = await fs.promises.readFile(receiptsPath, "utf8");
@@ -26,7 +34,11 @@ const seedVerifierReceipts = async (rootDir: string, runId: string, taskIds: str
       receipt: {
         type: "EXECUTOR_COMPLETED",
         taskId,
-        packet: { taskId, tests: ["arbiter/run/__tests__/runEpicAutopilot.test.ts"] }
+        packet: {
+          taskId,
+          execution: [executionRecord("v22.0.0")],
+          tests: ["arbiter/run/__tests__/runEpicAutopilot.test.ts"]
+        }
       }
     },
     { receipt: { type: "VERIFIER_SPEC", taskId, passed: true, packet: { taskId, passed: true } } },
