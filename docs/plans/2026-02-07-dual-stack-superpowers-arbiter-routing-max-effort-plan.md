@@ -111,10 +111,10 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 8 - Add tests for profile switching and persistence
 
 ### Phase C: Adaptive Routing
-- [ ] Task 9 - Add intake classifier (maturity/env/workspace)
+- [x] Task 9 - Add intake classifier (maturity/env/workspace)
 - [ ] Task 10 - Add conditional prompt generator
-- [ ] Task 11 - Route explicit user intent directly
-- [ ] Task 12 - Route ambiguous starts to option menu
+- [x] Task 11 - Route explicit user intent directly
+- [x] Task 12 - Route ambiguous starts to option menu
 - [ ] Task 13 - Add tests for each route + prompt copy snapshot freeze
 
 ### Phase D: Superpowers/Arbiter Interplay

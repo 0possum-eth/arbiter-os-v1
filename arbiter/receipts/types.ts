@@ -11,12 +11,21 @@ type ScoutContractViolationReceipt = {
   errors: Array<{ message: string; path?: string; keyword?: string }>;
 };
 
+type HaltRouteOption = {
+  id: string;
+  label: string;
+  description: string;
+  recommended?: boolean;
+};
+
 type HaltAndAskReceipt = {
   type: "HALT_AND_ASK";
   reason?: string;
   question?: string;
   epicId?: string;
   taskId?: string;
+  options?: HaltRouteOption[];
+  recommendedOptionId?: string;
 };
 
 type RunFinalizedReceipt = {
@@ -100,6 +109,7 @@ export type ReceiptPayload =
   | OracleReviewedReceipt;
 
 export type {
+  HaltRouteOption,
   ScoutContractViolationReceipt,
   HaltAndAskReceipt,
   RunFinalizedReceipt,
@@ -111,4 +121,32 @@ export type {
   IntegrationCheckedReceipt,
   UxSimulatedReceipt,
   OracleReviewedReceipt
+};
+
+type CreateHaltAndAskReceiptInput = {
+  reason?: string;
+  question?: string;
+  epicId?: string;
+  taskId?: string;
+  options?: HaltRouteOption[];
+};
+
+export const createHaltAndAskReceipt = (
+  input: CreateHaltAndAskReceiptInput = {}
+): HaltAndAskReceipt => {
+  const options = Array.isArray(input.options) ? input.options : [];
+  const normalizedOptions = options.map((option, index) => ({
+    ...option,
+    recommended: index === 0
+  }));
+
+  return {
+    type: "HALT_AND_ASK",
+    reason: input.reason,
+    question: input.question,
+    epicId: input.epicId,
+    taskId: input.taskId,
+    options: normalizedOptions.length > 0 ? normalizedOptions : undefined,
+    recommendedOptionId: normalizedOptions.length > 0 ? normalizedOptions[0].id : undefined
+  };
 };
