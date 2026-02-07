@@ -63,6 +63,13 @@ Replay tooling rebuilds derived views from the ledger event stream.
 - Ledger events are schema-versioned as `arbiter.ledger.v1` before they are appended
 - Validate replay behavior with `bash tests/arbiter/test-ledger-replay.sh`
 
+## Run-Epic End-to-End Gate
+
+Use the e2e gate to validate receipt-gated orchestration in an isolated temporary workspace.
+
+- Run `bash tests/arbiter/test-run-epic-e2e.sh`
+- The gate initializes a workspace, seeds a minimal epic/task, executes `run-epic`, and validates receipts plus ledger coherence
+
 ## Install Steps
 
 For OpenCode installation and plugin wiring, follow [.opencode/INSTALL.md](../../.opencode/INSTALL.md#installation-steps).

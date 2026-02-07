@@ -90,7 +90,9 @@ export const upsertReadinessMetadata = (currentMarkdown: string, sectionMarkdown
 };
 
 const recalculateReadiness = async () => {
-  const repoRoot = process.cwd();
+  const repoRoot = process.env.ARBITER_REPO_ROOT
+    ? path.resolve(process.env.ARBITER_REPO_ROOT)
+    : process.cwd();
   const readinessPath = path.join(repoRoot, "docs", "arbiter", "READINESS.md");
   const currentMarkdown = await fs.readFile(readinessPath, "utf8");
 

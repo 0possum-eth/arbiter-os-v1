@@ -177,7 +177,7 @@ fi
 
 echo ""
 echo "Refreshing readiness evidence metadata..."
-tsx "$REPO_ROOT/scripts/arbiter/recalculate-readiness.ts"
+ARBITER_REPO_ROOT="$REPO_ROOT" node "$REPO_ROOT/node_modules/tsx/dist/cli.mjs" "$REPO_ROOT/scripts/arbiter/recalculate-readiness.ts"
 
 echo ""
 echo "Running readiness documentation gate..."
@@ -192,8 +192,17 @@ echo ""
 echo "Running readiness score floor gate..."
 if bash "$REPO_ROOT/tests/arbiter/test-readiness-scores.sh"; then
   echo "Readiness score floor gate passed"
+else
+  echo "Readiness score floor gate failed"
+  exit 1
+fi
+
+echo ""
+echo "Running run-epic e2e gate..."
+if bash "$REPO_ROOT/tests/arbiter/test-run-epic-e2e.sh"; then
+  echo "Run-epic e2e gate passed"
   exit 0
 fi
 
-echo "Readiness score floor gate failed"
+echo "Run-epic e2e gate failed"
 exit 1
