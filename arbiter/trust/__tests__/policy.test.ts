@@ -347,6 +347,62 @@ test("plugin rejects pathless write tools", async () => {
   }
 });
 
+test("plugin allows direct readonly bash commands in experimental mode", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  const originalDirect = process.env.ARBITER_EXPERIMENTAL_DIRECT;
+  process.env.ARBITER_ROLE = "executor";
+  process.env.ARBITER_EXPERIMENTAL_DIRECT = "true";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await plugin["tool.execute.before"]({
+      name: "bash",
+      args: { command: "npm test" }
+    });
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+    if (originalDirect === undefined) {
+      delete process.env.ARBITER_EXPERIMENTAL_DIRECT;
+    } else {
+      process.env.ARBITER_EXPERIMENTAL_DIRECT = originalDirect;
+    }
+  }
+});
+
+test("plugin rejects mutating direct bash command in experimental mode", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  const originalDirect = process.env.ARBITER_EXPERIMENTAL_DIRECT;
+  process.env.ARBITER_ROLE = "executor";
+  process.env.ARBITER_EXPERIMENTAL_DIRECT = "true";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "bash",
+          args: { command: "npm install" }
+        }),
+      /unsupported payload shape/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+    if (originalDirect === undefined) {
+      delete process.env.ARBITER_EXPERIMENTAL_DIRECT;
+    } else {
+      process.env.ARBITER_EXPERIMENTAL_DIRECT = originalDirect;
+    }
+  }
+});
+
 test("plugin rejects unknown write-tool payload shapes fail-closed", async () => {
   const originalRole = process.env.ARBITER_ROLE;
   process.env.ARBITER_ROLE = "executor";

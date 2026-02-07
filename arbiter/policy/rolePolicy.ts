@@ -1,5 +1,5 @@
 import { isLedgerPath } from "./ledgerGuard";
-import { isWriteToolName } from "./toolTargets";
+import { DIRECT_READONLY_BASH_TARGET, isWriteToolName } from "./toolTargets";
 
 type RoleRule = {
   writeTools: "allow" | "deny";
@@ -38,6 +38,8 @@ const isLedgerOrViewPath = (target: string) => {
   return isLedgerPath(`/${normalized}`) || isLedgerPath(normalized);
 };
 
+const isDirectReadonlyBashTarget = (target: string) => normalize(target) === DIRECT_READONLY_BASH_TARGET;
+
 export const evaluateRolePolicy = ({
   role,
   toolName,
@@ -70,6 +72,22 @@ export const evaluateRolePolicy = ({
       allowed: false,
       reason: `Write tool ${toolName || "unknown"} requires explicit target paths`
     };
+  }
+
+  const hasDirectReadonlyBashTarget = targets.some((target) => isDirectReadonlyBashTarget(target));
+  if (hasDirectReadonlyBashTarget) {
+    if (normalize(toolName) !== "bash" || targets.length !== 1) {
+      return {
+        allowed: false,
+        reason: "Direct readonly bash target is only valid for standalone bash commands"
+      };
+    }
+    if (process.env.ARBITER_EXPERIMENTAL_DIRECT !== "true") {
+      return {
+        allowed: false,
+        reason: "Direct bash execution requires ARBITER_EXPERIMENTAL_DIRECT=true"
+      };
+    }
   }
 
   if (targets.some((target) => isLedgerOrViewPath(target)) && normalizedRole !== "ledger-keeper") {

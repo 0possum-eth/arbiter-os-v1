@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import { DIRECT_READONLY_BASH_TARGET } from "../toolTargets";
 import { evaluateRolePolicy } from "../rolePolicy";
 
 test("read-only role cannot run write tools", () => {
@@ -105,6 +106,49 @@ test("arbiter can run write tools with non-ledger targets", () => {
   });
 
   assert.equal(result.allowed, true);
+});
+
+test("direct readonly bash target is denied when experimental mode is off", () => {
+  const originalDirect = process.env.ARBITER_EXPERIMENTAL_DIRECT;
+  delete process.env.ARBITER_EXPERIMENTAL_DIRECT;
+
+  try {
+    const result = evaluateRolePolicy({
+      role: "executor",
+      toolName: "bash",
+      targets: [DIRECT_READONLY_BASH_TARGET]
+    });
+
+    assert.equal(result.allowed, false);
+    assert.match(result.reason || "", /ARBITER_EXPERIMENTAL_DIRECT/i);
+  } finally {
+    if (originalDirect === undefined) {
+      delete process.env.ARBITER_EXPERIMENTAL_DIRECT;
+    } else {
+      process.env.ARBITER_EXPERIMENTAL_DIRECT = originalDirect;
+    }
+  }
+});
+
+test("direct readonly bash target is allowed when experimental mode is on", () => {
+  const originalDirect = process.env.ARBITER_EXPERIMENTAL_DIRECT;
+  process.env.ARBITER_EXPERIMENTAL_DIRECT = "true";
+
+  try {
+    const result = evaluateRolePolicy({
+      role: "executor",
+      toolName: "bash",
+      targets: [DIRECT_READONLY_BASH_TARGET]
+    });
+
+    assert.equal(result.allowed, true);
+  } finally {
+    if (originalDirect === undefined) {
+      delete process.env.ARBITER_EXPERIMENTAL_DIRECT;
+    } else {
+      process.env.ARBITER_EXPERIMENTAL_DIRECT = originalDirect;
+    }
+  }
 });
 
 test("arbiter cannot write ledger and view paths directly", () => {

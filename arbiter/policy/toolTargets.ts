@@ -1,5 +1,7 @@
 const normalize = (value: string | undefined) => (value || "").trim().toLowerCase();
 
+export const DIRECT_READONLY_BASH_TARGET = "__direct_readonly_bash__";
+
 const toRecord = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object") {
     return {};
@@ -52,6 +54,26 @@ const extractApplyPatchTargets = (args: Record<string, unknown>): string[] => {
   return targets;
 };
 
+const BASH_DISALLOWED_TOKENS = /(?:[|;&<>]|\b(?:rm|mv|cp|chmod|chown|touch|mkdir|rmdir|npm\s+install|npm\s+ci|git\s+add|git\s+commit|git\s+push|git\s+merge|git\s+rebase|git\s+checkout|git\s+reset)\b)/i;
+
+const BASH_READONLY_PATTERNS = [
+  /^npm\s+test(?:\s|$)/i,
+  /^npm\s+run\s+(?:test|lint)(?:\s|$)/i,
+  /^node\s+--version$/i,
+  /^git\s+(?:status|diff|log)(?:\s|$)/i
+];
+
+const isSafeDirectBashCommand = (command: string) => {
+  const trimmed = command.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  if (BASH_DISALLOWED_TOKENS.test(trimmed)) {
+    return false;
+  }
+  return BASH_READONLY_PATTERNS.some((pattern) => pattern.test(trimmed));
+};
+
 export const WRITE_TOOLS = new Set([
   "write",
   "writefile",
@@ -100,6 +122,12 @@ export const extractToolTargets = (toolName: string | undefined, toolArgs: unkno
       break;
     case "bash":
       targets = extractPathLikeTargets(args, ["path", "filePath", "target"], ["paths", "targets", "filePaths"]);
+      if (targets.length === 0) {
+        const command = typeof args.command === "string" ? args.command : "";
+        if (process.env.ARBITER_EXPERIMENTAL_DIRECT === "true" && isSafeDirectBashCommand(command)) {
+          targets = [DIRECT_READONLY_BASH_TARGET];
+        }
+      }
       break;
     default:
       throw new Error(`Unsupported write tool: ${toolName || "unknown"}`);
