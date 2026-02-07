@@ -21,6 +21,8 @@ grep -Fq "list-bricks" "$RUN_EPIC_COMMAND_DOC"
 
 grep -Fq "inspectState" "$ARBITER_STATUS_COMMAND_DOC"
 grep -Fq "state snapshot" "$ARBITER_STATUS_COMMAND_DOC"
+grep -Fq "evidenceHealth" "$ARBITER_STATUS_COMMAND_DOC"
+grep -Fq "canClaimFlawless" "$ARBITER_STATUS_COMMAND_DOC"
 
 grep -Fq "workflow profile" "$WORKFLOW_MODE_COMMAND_DOC"
 grep -Fq "hybrid_guided" "$WORKFLOW_MODE_COMMAND_DOC"

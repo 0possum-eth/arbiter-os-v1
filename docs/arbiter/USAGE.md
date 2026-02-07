@@ -79,6 +79,13 @@ Use the e2e gate to validate receipt-gated orchestration in an isolated temporar
 - Run `bash tests/arbiter/test-run-epic-e2e.sh`
 - The gate initializes a workspace, seeds a minimal epic/task, executes `run-epic`, and validates receipts plus ledger coherence
 
+## Run-Epic Intake Routing Gate
+
+Use this gate to validate fail-safe routing behavior when environment prerequisites are missing and assisted install consent is not granted.
+
+- Run `bash tests/arbiter/test-run-epic-intake-routing.sh`
+- The gate verifies `HALT_AND_ASK` with `ENV_NOT_READY` and ensures no false task completion receipts are emitted
+
 ## Install Steps
 
 For OpenCode installation and plugin wiring, follow [.opencode/INSTALL.md](../../.opencode/INSTALL.md#installation-steps).

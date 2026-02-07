@@ -129,9 +129,9 @@ Routing directly to <selected-route> because you explicitly requested it.
 - [x] Task 20 - Add no-git/no-node/no-toolchain tests
 
 ### Phase F: Truthful Status + Anti-False-Success
-- [ ] Task 21 - Extend `arbiter-status` with evidence health/provenance
-- [ ] Task 22 - Add guard against artifact-shape-only "flawless" claims
-- [ ] Task 23 - Add VM regression tests
+- [x] Task 21 - Extend `arbiter-status` with evidence health/provenance
+- [x] Task 22 - Add guard against artifact-shape-only "flawless" claims
+- [x] Task 23 - Add VM regression tests
 
 ### Phase G: Docs + Verification Publish
 - [ ] Task 24 - Update install docs for dual-stack modes and first-run choices

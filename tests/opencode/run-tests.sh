@@ -201,8 +201,17 @@ echo ""
 echo "Running run-epic e2e gate..."
 if bash "$REPO_ROOT/tests/arbiter/test-run-epic-e2e.sh"; then
   echo "Run-epic e2e gate passed"
+else
+  echo "Run-epic e2e gate failed"
+  exit 1
+fi
+
+echo ""
+echo "Running run-epic intake routing gate..."
+if bash "$REPO_ROOT/tests/arbiter/test-run-epic-intake-routing.sh"; then
+  echo "Run-epic intake routing gate passed"
   exit 0
 fi
 
-echo "Run-epic e2e gate failed"
+echo "Run-epic intake routing gate failed"
 exit 1
