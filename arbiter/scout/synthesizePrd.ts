@@ -52,6 +52,7 @@ export async function synthesizePrd(input: SynthesizePrdInput): Promise<Synthesi
   const sortedSources = [...input.sourceRecords]
     .map((record) => ({ source: record.source, hash: record.hash, phase: record.phase }))
     .sort((a, b) => a.source.localeCompare(b.source) || a.hash.localeCompare(b.hash));
+  const externalSourceCount = sortedSources.filter((source) => source.source.startsWith("web:")).length;
 
   const phaseDir = path.join(rootDir, "docs", "arbiter", "reference", phase);
   const markdownFileName = `PRD_${label}.md`;
@@ -74,6 +75,8 @@ export async function synthesizePrd(input: SynthesizePrdInput): Promise<Synthesi
     synthesis: {
       label,
       generatedAt: resolveGeneratedAt(),
+      sourceCount: sortedSources.length,
+      externalSourceCount,
       sources: sortedSources
     }
   };

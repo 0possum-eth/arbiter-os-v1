@@ -13,7 +13,18 @@ type IngestResearchInput = {
 
 const normalizeSource = (value: string): string | null => {
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return `web:${trimmed}`;
+  }
+  return trimmed;
+};
+
+const normalizeContent = (value: string): string | null => {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 };
 
 export async function ingestResearch(input: IngestResearchInput): Promise<SourceRecord[]> {
@@ -22,13 +33,14 @@ export async function ingestResearch(input: IngestResearchInput): Promise<Source
 
   for (const source of input.sources) {
     const sourceName = normalizeSource(source.source);
-    if (!sourceName) {
+    const sourceContent = normalizeContent(source.content);
+    if (!sourceName || !sourceContent) {
       continue;
     }
 
     const record = await ingestSource({
       source: sourceName,
-      content: source.content,
+      content: sourceContent,
       phase,
       baseDir: input.baseDir
     });

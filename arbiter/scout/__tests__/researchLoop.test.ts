@@ -197,3 +197,59 @@ test("runScout emits deterministic metadata when ARBITER_DETERMINISTIC is enable
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("runScout ingests externally fetched research sources", async () => {
+  const originalCwd = process.cwd();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "scout-loop-external-research-test-"));
+
+  try {
+    process.chdir(tempDir);
+    await fs.mkdir(path.join(tempDir, "docs", "arbiter"), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, "docs", "arbiter", "brainstorm.md"),
+      [
+        "## Problem",
+        "- Build a scout research loop with external sources.",
+        "## Constraints",
+        "- Keep deterministic outputs.",
+        "## Unknowns",
+        "- Which source granularity to keep",
+        "## Epic",
+        "- Scout synthesis",
+        "## Tasks",
+        "- Ingest research",
+        "- Generate PRD artifacts"
+      ].join("\n"),
+      "utf8"
+    );
+
+    await runScout({
+      fetchResearch: async () => [
+        {
+          source: "web:https://example.com/research/alpha",
+          content: "External risk and dependency notes."
+        }
+      ]
+    });
+
+    const phaseDir = buildPhaseDir(tempDir);
+    const sourcesRaw = await fs.readFile(path.join(phaseDir, "sources.jsonl"), "utf8");
+    const sourceEntries = sourcesRaw
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { source: string });
+
+    assert.ok(sourceEntries.some((entry) => entry.source === "web:https://example.com/research/alpha"));
+
+    const metadataRaw = await fs.readFile(path.join(phaseDir, "PRD_scout_metadata.json"), "utf8");
+    const metadata = JSON.parse(metadataRaw) as {
+      synthesis?: { sourceCount?: number; externalSourceCount?: number };
+    };
+    assert.equal(metadata.synthesis?.sourceCount, 4);
+    assert.equal(metadata.synthesis?.externalSourceCount, 1);
+  } finally {
+    process.chdir(originalCwd);
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});

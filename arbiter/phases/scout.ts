@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
 import { extractPrd } from "../scout/extractPrd";
+import { fetchResearch } from "../scout/fetchResearch";
 import { ingestResearch } from "../scout/researchIngest";
 import { synthesizePrd } from "../scout/synthesizePrd";
 
@@ -25,7 +26,11 @@ const readBullets = (lines: string[], header: string) => {
   return bullets;
 };
 
-export async function runScout(): Promise<unknown> {
+type RunScoutOptions = {
+  fetchResearch?: () => Promise<Array<{ source: string; content: string }>>;
+};
+
+export async function runScout(options: RunScoutOptions = {}): Promise<unknown> {
   const prdOutput = await extractPrd();
   if (prdOutput) return prdOutput;
 
@@ -60,6 +65,8 @@ export async function runScout(): Promise<unknown> {
     : constraints;
 
   const phase = "phase-01";
+  const externalSources =
+    typeof options.fetchResearch === "function" ? await options.fetchResearch() : await fetchResearch();
   const sourceRecords = await ingestResearch({
     baseDir: rootDir,
     phase,
@@ -75,7 +82,8 @@ export async function runScout(): Promise<unknown> {
       {
         source: "docs/arbiter/brainstorm.md#tasks",
         content: tasks.join("\n")
-      }
+      },
+      ...externalSources
     ]
   });
 
