@@ -17,6 +17,21 @@ This scorecard is the release-readiness gate for the Arbiter OS workspace.
 
 **Total readiness score: 94/100**
 
+## Independent Audit Pass
+
+Audit scope: `core arbiter build plan.md` criteria mapped to repository evidence.
+
+| Category | Evidence |
+| --- | --- |
+| Orchestration kernel & command surface | `arbiter/run/runEpicAutopilot.ts`, `arbiter/commands/index.ts`, `tests/arbiter/test-command-surface.sh` |
+| Execution + verification + done gating | `arbiter/execute/executeTaskStrategy.ts`, `arbiter/verify/verifyReceipts.ts`, `arbiter/ledger/ledgerKeeper.ts` |
+| Ledger/state architecture | `arbiter/ledger/appendEvent.ts`, `arbiter/ledger/rebuildViews.ts`, `tests/arbiter/test-ledger-replay.sh` |
+| Trust gating & role isolation | `arbiter/trust/policy.ts`, `arbiter/policy/rolePolicy.ts`, `.opencode/plugins/arbiter-os.js` |
+| Retrieval/context quality | `arbiter/docs/retrieveBricks.ts`, `arbiter/docs/retrievalScoring.ts`, `arbiter/librarian/contextPack.ts` |
+| Memory/continuity | `arbiter/memory/query.ts`, `arbiter/memory/policy.ts`, `arbiter/memory/compactSummary.ts` |
+| Scout/research-to-PRD loop | `arbiter/scout/extractPrd.ts`, `arbiter/scout/candidateScoring.ts`, `arbiter/decisions/arbiterDecision.ts` |
+| Install/docs/runtime migration readiness | `.opencode/INSTALL.md`, `docs/README.opencode.md`, `scripts/arbiter/install-opencode.ps1` |
+
 ## Verification Evidence
 
 Run all required checks from repository root:
