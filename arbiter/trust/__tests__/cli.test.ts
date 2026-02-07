@@ -33,8 +33,12 @@ test("trust CLI commands update registry and list bricks", async () => {
     assert.equal(await approveBrick(`  ${docA}  `), normalizedDocA);
 
     const raw = await fs.promises.readFile(trustPath, "utf8");
-    const parsed = JSON.parse(raw) as { trusted?: string[] };
-    assert.ok(parsed.trusted?.includes(normalizedDocA));
+    const parsed = JSON.parse(raw) as {
+      records?: Record<string, { approved?: boolean; hash?: string; approvedAt?: string }>;
+    };
+    const record = parsed.records?.[normalizedDocA];
+    assert.equal(record?.approved, true);
+    assert.match(record?.hash ?? "", /^[a-f0-9]{64}$/);
 
     const mounted = await mountDoc(` ${docA} `);
     assert.notEqual(mounted.packPath, normalizedDocA);
@@ -58,6 +62,42 @@ test("trust CLI commands update registry and list bricks", async () => {
         }),
       /untrusted docs mounted/i
     );
+  } finally {
+    if (originalTrustPath === undefined) {
+      delete process.env.ARBITER_TRUST_PATH;
+    } else {
+      process.env.ARBITER_TRUST_PATH = originalTrustPath;
+    }
+    if (originalIndexPath === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalIndexPath;
+    }
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("mountDoc rejects trusted doc when content hash changes", async () => {
+  const originalTrustPath = process.env.ARBITER_TRUST_PATH;
+  const originalIndexPath = process.env.ARBITER_DOCS_INDEX_PATH;
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-trust-cli-hash-"));
+  const trustPath = path.join(tempDir, "trust.json");
+  const indexPath = path.join(tempDir, "bricks.jsonl");
+  const docsDir = path.join(tempDir, "docs");
+  const docA = path.join(docsDir, "alpha.md");
+
+  try {
+    await fs.promises.mkdir(docsDir, { recursive: true });
+    await fs.promises.writeFile(docA, "# Alpha\nversion one", "utf8");
+    await indexBricks(docsDir, indexPath);
+
+    process.env.ARBITER_TRUST_PATH = trustPath;
+    process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
+
+    await approveBrick(docA);
+    await fs.promises.writeFile(docA, "# Alpha\nversion two", "utf8");
+
+    await assert.rejects(() => mountDoc(docA), /hash mismatch/i);
   } finally {
     if (originalTrustPath === undefined) {
       delete process.env.ARBITER_TRUST_PATH;

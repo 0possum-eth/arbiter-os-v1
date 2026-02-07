@@ -11,7 +11,7 @@ test("approveDoc records trust in registry", async () => {
   const originalCwd = process.cwd();
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-trust-"));
   const registryPath = path.join(tempDir, "trust.json");
-  const docPath = path.join("docs", "arbiter", "reference", "trusted.md");
+  const docPath = path.join(tempDir, "docs", "arbiter", "reference", "trusted.md");
   const normalizedDocPath = docPath.replace(/\\/g, "/");
   let prior: string | null = null;
 
@@ -25,12 +25,18 @@ test("approveDoc records trust in registry", async () => {
   }
 
   try {
+    await fs.promises.mkdir(path.dirname(docPath), { recursive: true });
+    await fs.promises.writeFile(docPath, "# trusted\n", "utf8");
     await approveDoc(docPath);
 
     const raw = await fs.promises.readFile(registryPath, "utf8");
-    const parsed = JSON.parse(raw) as { trusted?: string[] };
-    assert.ok(Array.isArray(parsed.trusted));
-    assert.ok(parsed.trusted?.includes(normalizedDocPath));
+    const parsed = JSON.parse(raw) as {
+      records?: Record<string, { approved?: boolean; hash?: string; approvedAt?: string }>;
+    };
+    const record = parsed.records?.[normalizedDocPath];
+    assert.equal(record?.approved, true);
+    assert.match(record?.hash ?? "", /^[a-f0-9]{64}$/);
+    assert.match(record?.approvedAt ?? "", /^\d{4}-\d{2}-\d{2}T/);
     assert.equal(await isTrusted(docPath), true);
   } finally {
     if (prior === null) {

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { approveDoc, isTrusted } from "./commands";
+import { approveDoc, isTrusted, verifyTrustedDoc } from "./commands";
 import { canMountForExecution, classifyBrick } from "./policy";
 import { contextPack } from "../librarian/contextPack";
 
@@ -42,9 +42,13 @@ export type MountDocResult = {
 export async function mountDoc(docPath: string): Promise<MountDocResult> {
   const normalizedPath = normalizeDocPath(docPath);
   const resolvedDocPath = path.resolve(normalizedPath);
-  const trustedForPolicy = await isTrusted(normalizedPath);
+  const trustCheck = await verifyTrustedDoc(normalizedPath);
+  const trustedForPolicy = trustCheck.trusted;
   const brickType = classifyBrick(normalizedPath);
   if (!canMountForExecution(normalizedPath, trustedForPolicy)) {
+    if (trustCheck.reason === "hash mismatch") {
+      throw new Error(`Doc hash mismatch: ${normalizedPath}`);
+    }
     throw new Error(`Doc not trusted: ${normalizedPath}`);
   }
   const packDir = path.join(process.cwd(), "docs", "arbiter", "context-packs");

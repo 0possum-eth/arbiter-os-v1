@@ -151,6 +151,8 @@ test("plugin accepts trusted mounted behavior doc when sourcePath is trusted", a
 
   try {
     process.env.ARBITER_TRUST_PATH = path.join(tempDir, "trust.json");
+    await fs.promises.mkdir(path.dirname(trustedSourcePath), { recursive: true });
+    await fs.promises.writeFile(trustedSourcePath, "# trusted\n", "utf8");
     await approveDoc(trustedSourcePath);
 
     const plugin = await ArbiterOsPlugin();
