@@ -98,3 +98,11 @@ test("multiple candidates remain valid when recommendation references one candid
   const result = validateScoutSynthesis(envelope);
   assert.equal(result, envelope);
 });
+
+test("recommendation rationale can encode score and tie context", () => {
+  const envelope = baseEnvelope();
+  envelope.recommendation.rationale = "score=6.25 reasons=tasks+readiness tie=id";
+
+  const result = validateScoutSynthesis(envelope);
+  assert.equal(result, envelope);
+});

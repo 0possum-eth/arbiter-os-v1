@@ -149,6 +149,9 @@ test("arbiterDecision prefers execution-ready candidate when recommendation is n
 
     const result = await arbiterDecision(payload);
     assert.equal(result.status, "PROCEED");
+    const synthesis = result.scoutSynthesis as { recommendation?: { rationale?: string } };
+    assert.match(synthesis.recommendation?.rationale ?? "", /score=/i);
+    assert.match(synthesis.recommendation?.rationale ?? "", /tie=/i);
 
     const prdPath = path.join(tempDir, "docs", "arbiter", "prd.json");
     const prdRaw = await fs.promises.readFile(prdPath, "utf8");

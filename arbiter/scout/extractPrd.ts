@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
-import { pickBestScoutCandidate } from "./candidateScoring";
+import { describeScoutCandidateChoice, pickBestScoutCandidate } from "./candidateScoring";
 import { assertValidPhaseName, ingestSource, type SourceRecord } from "./sourceIngest";
 
 type PrdEpic = {
@@ -235,6 +235,7 @@ export async function extractPrd(options: ExtractPrdOptions = {}): Promise<Scout
   );
 
   const recommendedCandidate = pickBestScoutCandidate(candidates, epicId) ?? candidates[0];
+  const recommendationRationale = describeScoutCandidateChoice(candidates, recommendedCandidate, epicId);
 
   const sourceRef = await ingestSource({
     source: prdSource,
@@ -259,7 +260,7 @@ export async function extractPrd(options: ExtractPrdOptions = {}): Promise<Scout
     candidates,
     recommendation: {
       candidateId: recommendedCandidate.id,
-      rationale: "Deterministic execution-readiness scoring over PRD candidates"
+      rationale: recommendationRationale
     }
   };
 }

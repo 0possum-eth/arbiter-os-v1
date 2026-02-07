@@ -4,7 +4,7 @@ import {
   validateScoutSynthesis,
   type ScoutContractViolationError
 } from "../validators/validateScoutSynthesis";
-import { pickBestScoutCandidate } from "../scout/candidateScoring";
+import { describeScoutCandidateChoice, pickBestScoutCandidate } from "../scout/candidateScoring";
 import { queryMemory } from "../memory/query";
 import type { MemoryEntry } from "../memory/store";
 import { activateEpic } from "../state/activateEpic";
@@ -37,7 +37,7 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
   try {
     const scoutSynthesis = validateScoutSynthesis(rawScoutOutput) as {
       candidates: Array<{ id: string; title?: string; intent?: string; artifactsToTouch?: string[] }>;
-      recommendation: { candidateId: string };
+      recommendation: { candidateId: string; rationale?: string };
       summary?: { problemStatement?: string };
       failureMode?: unknown;
     };
@@ -62,6 +62,20 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
         }
       };
     }
+
+    const scoringRationale = describeScoutCandidateChoice(
+      scoutSynthesis.candidates,
+      candidate,
+      scoutSynthesis.recommendation.candidateId
+    );
+    const currentRationale =
+      typeof scoutSynthesis.recommendation.rationale === "string"
+        ? scoutSynthesis.recommendation.rationale.trim()
+        : "";
+    scoutSynthesis.recommendation.rationale =
+      currentRationale.length > 0 && currentRationale !== scoringRationale
+        ? `${currentRationale} | ${scoringRationale}`
+        : scoringRationale;
 
     const tasks = candidate.artifactsToTouch && candidate.artifactsToTouch.length > 0
       ? candidate.artifactsToTouch.map((id) => ({ id, noop: false }))
