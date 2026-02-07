@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { arbiterDecision } from "../arbiterDecision";
+import { writeMemoryEntry } from "../../memory/store";
 
 test("invalid scout payload halts with contract violation receipt", async () => {
   const invalidPayload = {
@@ -43,6 +44,8 @@ test("actionable scout recommendation activates tasks as non-noop", async () => 
   process.chdir(tempDir);
 
   try {
+    await writeMemoryEntry("project", { note: "feature context from prior work" });
+
     const payload = {
       schemaVersion: "arbiter.scout.v1",
       metadata: {
@@ -77,6 +80,7 @@ test("actionable scout recommendation activates tasks as non-noop", async () => 
 
     const result = await arbiterDecision(payload);
     assert.equal(result.status, "OK");
+    assert.ok((result.memoryContext?.length ?? 0) > 0);
 
     const prdPath = path.join(tempDir, "docs", "arbiter", "prd.json");
     const prdRaw = await fs.promises.readFile(prdPath, "utf8");

@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { ArbiterOsPlugin } from "../../../.opencode/plugins/arbiter-os.js";
+import { queryMemory } from "../query";
 import { readMemoryEntries, writeMemoryEntry } from "../store";
 
 test("memory store writes and reads JSONL entries by scope", async () => {
@@ -75,6 +76,24 @@ test("compaction summary handles undefined memory payload safely", async () => {
     const plugin = await ArbiterOsPlugin();
     const compacted = await plugin["experimental.session.compacting"]();
     assert.match(compacted.summary, /session: none/i);
+  } finally {
+    process.chdir(originalCwd);
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("queryMemory returns most relevant project memory entries", async () => {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-memory-query-"));
+  const originalCwd = process.cwd();
+  process.chdir(tempDir);
+
+  try {
+    await writeMemoryEntry("project", { note: "release checklist and rollout readiness" });
+    await writeMemoryEntry("project", { note: "unrelated maintenance backlog" });
+
+    const memoryContext = await queryMemory({ scope: "project", query: "release rollout", limit: 1 });
+    assert.equal(memoryContext.length, 1);
+    assert.match(JSON.stringify(memoryContext[0].data), /release checklist/i);
   } finally {
     process.chdir(originalCwd);
     await fs.promises.rm(tempDir, { recursive: true, force: true });

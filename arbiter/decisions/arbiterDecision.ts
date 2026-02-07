@@ -4,6 +4,8 @@ import {
   validateScoutSynthesis,
   type ScoutContractViolationError
 } from "../validators/validateScoutSynthesis";
+import { queryMemory } from "../memory/query";
+import type { MemoryEntry } from "../memory/store";
 import { activateEpic } from "../state/activateEpic";
 import type { ScoutContractViolationReceipt } from "../receipts/types";
 
@@ -11,6 +13,7 @@ type ArbiterDecisionResult =
   | {
       status: "OK";
       scoutSynthesis: unknown;
+      memoryContext: MemoryEntry[];
     }
   | {
       status: "HALT_AND_ASK";
@@ -32,8 +35,9 @@ const isScoutContractViolation = (
 export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterDecisionResult> {
   try {
     const scoutSynthesis = validateScoutSynthesis(rawScoutOutput) as {
-      candidates: Array<{ id: string; artifactsToTouch?: string[] }>;
+      candidates: Array<{ id: string; title?: string; intent?: string; artifactsToTouch?: string[] }>;
       recommendation: { candidateId: string };
+      summary?: { problemStatement?: string };
       failureMode?: unknown;
     };
 
@@ -61,7 +65,12 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
       tasks
     });
 
-    return { status: "OK", scoutSynthesis };
+    const memoryQuery = [candidate.title, candidate.intent, scoutSynthesis.summary?.problemStatement]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .join(" ") || candidate.id;
+    const memoryContext = await queryMemory({ scope: "project", query: memoryQuery, limit: 3 });
+
+    return { status: "OK", scoutSynthesis, memoryContext };
   } catch (error) {
     if (isScoutContractViolation(error)) {
       return {

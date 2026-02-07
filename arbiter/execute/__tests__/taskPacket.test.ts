@@ -5,6 +5,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { indexBricks } from "../../docs/indexBricks";
+import { writeMemoryEntry } from "../../memory/store";
 import { buildTaskPacket } from "../taskPacket";
 import { runTask } from "../taskRunner";
 
@@ -86,6 +87,37 @@ test("noop behavior does not change non-noop behavior", async () => {
     const noop = await runTask({ id: "TASK-X", noop: true, query: "spark" });
     assert.deepEqual(noop, { type: "TASK_DONE" });
   } finally {
+    if (originalEnv === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalEnv;
+    }
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("buildTaskPacket includes project memory context when available", async () => {
+  const originalEnv = process.env.ARBITER_DOCS_INDEX_PATH;
+  const originalCwd = process.cwd();
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-taskpack-memory-"));
+
+  try {
+    process.chdir(tempDir);
+    const docsDir = path.join(tempDir, "docs");
+    await fs.promises.mkdir(docsDir, { recursive: true });
+    const docA = path.join(docsDir, "alpha.md");
+    await fs.promises.writeFile(docA, "# Alpha\nSpark token.", "utf8");
+
+    const indexPath = path.join(tempDir, "index.jsonl");
+    await indexBricks(docsDir, indexPath);
+    process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
+
+    await writeMemoryEntry("project", { note: "spark token prior decision" });
+
+    const packet = await buildTaskPacket({ id: "TASK-MEM", query: "spark" });
+    assert.ok((packet.memoryContext?.length ?? 0) > 0);
+  } finally {
+    process.chdir(originalCwd);
     if (originalEnv === undefined) {
       delete process.env.ARBITER_DOCS_INDEX_PATH;
     } else {

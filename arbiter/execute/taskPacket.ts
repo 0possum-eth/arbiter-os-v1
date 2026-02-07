@@ -1,10 +1,13 @@
 import { contextPack } from "../librarian/contextPack";
+import { queryMemory } from "../memory/query";
+import type { MemoryEntry } from "../memory/store";
 
 export type TaskPacket = {
   taskId: string;
   contextPack: string;
   citations: string[];
   query: string;
+  memoryContext: MemoryEntry[];
   strategyCommands?: StrategyCommand[];
 };
 
@@ -64,11 +67,17 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
       : task.id ?? "UNKNOWN_TASK";
   const query = task.query && task.query.trim().length > 0 ? task.query : taskId;
   let pack = "## Context Pack";
+  let memoryContext: MemoryEntry[] = [];
   const strategyCommands = normalizeStrategyCommands(task.strategyCommands);
   try {
     pack = await contextPack(query, { capProfile: "extended", includeSourceIds: true });
   } catch {
     pack = "## Context Pack";
+  }
+  try {
+    memoryContext = await queryMemory({ scope: "project", query, limit: 3 });
+  } catch {
+    memoryContext = [];
   }
 
   return {
@@ -76,6 +85,7 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
     contextPack: pack,
     citations: extractCitations(pack),
     query,
+    memoryContext,
     ...(strategyCommands ? { strategyCommands } : {})
   };
 }
