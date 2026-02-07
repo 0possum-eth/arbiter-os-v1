@@ -178,9 +178,18 @@ fi
 echo ""
 echo "Running readiness documentation gate..."
 if bash "$REPO_ROOT/tests/arbiter/test-doc-links.sh"; then
-    echo "Readiness documentation gate passed"
-    exit 0
+  echo "Readiness documentation gate passed"
+else
+  echo "Readiness documentation gate failed"
+  exit 1
 fi
 
-echo "Readiness documentation gate failed"
+echo ""
+echo "Running readiness score floor gate..."
+if bash "$REPO_ROOT/tests/arbiter/test-readiness-scores.sh"; then
+  echo "Readiness score floor gate passed"
+  exit 0
+fi
+
+echo "Readiness score floor gate failed"
 exit 1
