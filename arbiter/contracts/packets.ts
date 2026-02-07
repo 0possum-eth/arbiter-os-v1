@@ -33,4 +33,5 @@ export type IntegrationPacket = {
 export type UxPacket = {
   taskId: string;
   passed: boolean;
+  journey_checks: string[];
 };

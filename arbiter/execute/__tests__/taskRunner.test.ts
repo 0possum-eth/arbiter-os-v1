@@ -231,7 +231,7 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
         emitted.push({
           type: "UX_SIMULATED",
           taskId: packet.taskId,
-          packet: { taskId: packet.taskId, passed: true }
+          packet: { taskId: packet.taskId, passed: true, journey_checks: ["journey:task-flow"] }
         });
       },
       emitReceipt: async (receipt) => {
@@ -267,7 +267,7 @@ test("runTask emits integration and ux receipts when task gates are enabled", as
     {
       type: "UX_SIMULATED",
       taskId: "TASK-GATED",
-      packet: { taskId: "TASK-GATED", passed: true }
+      packet: { taskId: "TASK-GATED", passed: true, journey_checks: ["journey:task-flow"] }
     }
   ]);
 });

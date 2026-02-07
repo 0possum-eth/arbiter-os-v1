@@ -185,7 +185,11 @@ const asUxPacket = (value: unknown, taskId: string): UxPacket | null => {
   if (!hasOnlyKeys(value, ["taskId", "passed", "journey_checks"])) {
     return null;
   }
-  if (hasOwn(value, "journey_checks") && !isStringList(value.journey_checks)) {
+  if (!hasOwn(value, "journey_checks") || !isStringList(value.journey_checks)) {
+    return null;
+  }
+  const journeyChecks = value.journey_checks.map((item) => item.trim()).filter((item) => item.length > 0);
+  if (journeyChecks.length === 0 || journeyChecks.length !== value.journey_checks.length) {
     return null;
   }
   if (value.taskId !== taskId || value.passed !== true) {

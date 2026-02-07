@@ -351,7 +351,7 @@ test("verifyReceipts enforces integration and ux packets for task gates", () => 
         receipt: {
           type: "UX_SIMULATED",
           taskId: "TASK-1",
-          packet: { taskId: "TASK-1", passed: true }
+          packet: { taskId: "TASK-1", passed: true, journey_checks: ["journey:task-flow"] }
         }
       }
     ],
@@ -368,6 +368,34 @@ test("verifyReceipts enforces integration and ux packets for task gates", () => 
     tests: ["arbiter/verify/__tests__/verifyReceipts.test.ts"],
     files_changed: ["arbiter/verify/verifyReceipts.ts"]
   });
+});
+
+test("verifyReceipts rejects ux packet without journey checks", () => {
+  const result = verifyReceipts(
+    [
+      ...validTaskPackets("TASK-1"),
+      {
+        id: "REC-INTEGRATION-1",
+        receipt: {
+          type: "INTEGRATION_CHECKED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      },
+      {
+        id: "REC-UX-MISSING-CHECKS",
+        receipt: {
+          type: "UX_SIMULATED",
+          taskId: "TASK-1",
+          packet: { taskId: "TASK-1", passed: true }
+        }
+      }
+    ],
+    "TASK-1",
+    { requiresIntegrationCheck: true, uxSensitive: true }
+  );
+
+  assert.equal(result, null);
 });
 
 test("verifyReceipts requires verifier packets after latest executor receipt", () => {
@@ -522,7 +550,12 @@ test("verifyReceipts rejects malformed integration and ux packet keys", () => {
         receipt: {
           type: "UX_SIMULATED",
           taskId: "TASK-1",
-          packet: { taskId: "TASK-1", passed: true, forged: true }
+          packet: {
+            taskId: "TASK-1",
+            passed: true,
+            journey_checks: ["journey:task-flow"],
+            forged: true
+          }
         }
       }
     ],

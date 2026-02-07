@@ -13,7 +13,16 @@ const readReceipts = async (filePath: string) => {
     .trim()
     .split("\n")
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as { receipt: { type: string; taskId?: string; packet?: { taskId?: string; passed?: boolean } } });
+    .map(
+      (line) =>
+        JSON.parse(line) as {
+          receipt: {
+            type: string;
+            taskId?: string;
+            packet?: { taskId?: string; passed?: boolean; journey_checks?: string[] };
+          };
+        }
+    );
 };
 
 test("phase helpers emit task-scoped integration and ux receipts", async () => {
@@ -48,6 +57,8 @@ test("phase helpers emit task-scoped integration and ux receipts", async () => {
     assert.equal(ux?.receipt.taskId, "TASK-1");
     assert.equal(ux?.receipt.packet?.taskId, "TASK-1");
     assert.equal(ux?.receipt.packet?.passed, true);
+    assert.ok(Array.isArray(ux?.receipt.packet?.journey_checks));
+    assert.ok((ux?.receipt.packet?.journey_checks?.length ?? 0) > 0);
   } finally {
     process.chdir(originalCwd);
     if (originalRunId === undefined) {

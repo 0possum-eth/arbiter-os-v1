@@ -57,7 +57,11 @@ const seedRunReceipts = async (
   if (options.includeUx === true) {
     entries.push({
       id: "REC-UX-1",
-      receipt: { type: "UX_SIMULATED", taskId, packet: { taskId, passed: true } }
+      receipt: {
+        type: "UX_SIMULATED",
+        taskId,
+        packet: { taskId, passed: true, journey_checks: ["journey:task-flow"] }
+      }
     });
   }
   await fs.promises.writeFile(
