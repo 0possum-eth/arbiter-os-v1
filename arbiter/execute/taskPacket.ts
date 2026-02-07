@@ -66,7 +66,7 @@ export async function buildTaskPacket(task: TaskPacketInput): Promise<TaskPacket
   let pack = "## Context Pack";
   const strategyCommands = normalizeStrategyCommands(task.strategyCommands);
   try {
-    pack = await contextPack(query);
+    pack = await contextPack(query, { capProfile: "extended", includeSourceIds: true });
   } catch {
     pack = "## Context Pack";
   }

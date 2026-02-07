@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createHash } from "node:crypto";
 
 import { retrieveBricks } from "../docs/retrieveBricks";
 import { isTrusted } from "../trust/commands";
@@ -24,28 +25,50 @@ type ContextPackOptions = {
   includeTrustLabels?: boolean;
   requireTrusted?: boolean;
   allowedSourcePaths?: string[];
+  includeSourceIds?: boolean;
+  capProfile?: "compact" | "default" | "extended";
 };
+
+const CONTEXT_PACK_PROFILE_CAPS = {
+  compact: 2_000,
+  default: CONTEXT_PACK_HARD_CAP,
+  extended: 12_000
+} as const;
+
+const CONTEXT_PACK_PROFILE_LIMITS = {
+  compact: 1,
+  default: 2,
+  extended: 4
+} as const;
+
+const sourceIdFor = (source: string) => createHash("sha256").update(source, "utf8").digest("hex").slice(0, 12);
 
 const formatLine = (
   source: string,
   trustLabel: "trusted" | "untrusted",
   content: string,
-  includeTrustLabels: boolean
+  includeTrustLabels: boolean,
+  includeSourceIds: boolean
 ) => {
+  const sourceIdSuffix = includeSourceIds ? ` source_id:${sourceIdFor(source)}` : "";
   if (!includeTrustLabels) {
-    return `- [${source}] ${content}`;
+    return `- [${source}]${sourceIdSuffix} ${content}`;
   }
-  return `- [${source}] (${trustLabel}) ${content}`;
+  return `- [${source}] (${trustLabel})${sourceIdSuffix} ${content}`;
 };
 
 export async function contextPack(query: string, options: ContextPackOptions = {}) {
   const includeTrustLabels = options.includeTrustLabels === true;
+  const includeSourceIds = options.includeSourceIds === true;
   const requireTrusted = options.requireTrusted === true;
+  const capProfile = options.capProfile ?? "default";
+  const maxChars = CONTEXT_PACK_PROFILE_CAPS[capProfile] ?? CONTEXT_PACK_PROFILE_CAPS.default;
+  const retrievalLimit = CONTEXT_PACK_PROFILE_LIMITS[capProfile] ?? CONTEXT_PACK_PROFILE_LIMITS.default;
   const allowedSourcePaths = Array.isArray(options.allowedSourcePaths)
     ? new Set(options.allowedSourcePaths.map((value) => normalizePath(value)))
     : null;
   const indexPath = getIndexPath();
-  const bricks = await retrieveBricks(indexPath, query, 2);
+  const bricks = await retrieveBricks(indexPath, query, retrievalLimit);
   const lines = await Promise.all(
     bricks.map(async (brick) => {
       const normalizedSourcePath = normalizePath(brick.path);
@@ -62,7 +85,7 @@ export async function contextPack(query: string, options: ContextPackOptions = {
       const heading = normalizeHeading(brick.heading);
       const source = `${normalizedSourcePath}#${heading}`;
       const trustLabel: "trusted" | "untrusted" = trusted ? "trusted" : "untrusted";
-      return formatLine(source, trustLabel, brick.content, includeTrustLabels);
+      return formatLine(source, trustLabel, brick.content, includeTrustLabels, includeSourceIds);
     })
   );
 
@@ -72,7 +95,7 @@ export async function contextPack(query: string, options: ContextPackOptions = {
       continue;
     }
     const nextPack = `${pack}\n${line}`;
-    if (nextPack.length > CONTEXT_PACK_HARD_CAP) {
+    if (nextPack.length > maxChars) {
       break;
     }
     pack = nextPack;

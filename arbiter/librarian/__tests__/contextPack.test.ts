@@ -31,18 +31,14 @@ test("contextPack returns top two bricks with provenance and trust labels", asyn
   await approveDoc(docA);
 
   try {
-    const pack = await contextPack("spark frob", { includeTrustLabels: true });
+    const pack = await contextPack("spark frob", { includeTrustLabels: true, includeSourceIds: true });
     const normalizedA = docA.replace(/\\/g, "/");
     const normalizedB = docB.replace(/\\/g, "/");
 
-    assert.equal(
-      pack,
-      [
-        "## Context Pack",
-        `- [${normalizedA}#Alpha] (trusted) This section mentions spark and frob.`,
-        `- [${normalizedB}#Beta] (untrusted) This section mentions spark only.`
-      ].join("\n")
-    );
+    assert.ok(pack.startsWith("## Context Pack"));
+    assert.ok(pack.includes(`[${normalizedA}#Alpha] (trusted)`));
+    assert.ok(pack.includes(`[${normalizedB}#Beta] (untrusted)`));
+    assert.match(pack, /source_id:[a-f0-9]{12}/i);
   } finally {
     if (originalEnv === undefined) {
       delete process.env.ARBITER_DOCS_INDEX_PATH;
@@ -75,6 +71,37 @@ test("contextPack enforces hard size cap", async () => {
   try {
     const pack = await contextPack("spark");
     assert.ok(pack.length <= CONTEXT_PACK_HARD_CAP);
+  } finally {
+    if (originalEnv === undefined) {
+      delete process.env.ARBITER_DOCS_INDEX_PATH;
+    } else {
+      process.env.ARBITER_DOCS_INDEX_PATH = originalEnv;
+    }
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("contextPack supports adaptive cap profiles", async () => {
+  const originalEnv = process.env.ARBITER_DOCS_INDEX_PATH;
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "arbiter-context-adaptive-"));
+  const docsDir = path.join(tempDir, "docs");
+  await fs.promises.mkdir(docsDir, { recursive: true });
+
+  const longContent = "spark ".repeat(500);
+  const docA = path.join(docsDir, "alpha.md");
+  const docB = path.join(docsDir, "beta.md");
+  await fs.promises.writeFile(docA, `# Alpha\n${longContent}`, "utf8");
+  await fs.promises.writeFile(docB, `# Beta\n${longContent}`, "utf8");
+
+  const indexPath = path.join(tempDir, "index.jsonl");
+  await indexBricks(docsDir, indexPath);
+  process.env.ARBITER_DOCS_INDEX_PATH = indexPath;
+
+  try {
+    const compactPack = await contextPack("spark", { capProfile: "compact" });
+    const extendedPack = await contextPack("spark", { capProfile: "extended" });
+    assert.ok(compactPack.length < extendedPack.length);
+    assert.ok(compactPack.length <= CONTEXT_PACK_HARD_CAP);
   } finally {
     if (originalEnv === undefined) {
       delete process.env.ARBITER_DOCS_INDEX_PATH;

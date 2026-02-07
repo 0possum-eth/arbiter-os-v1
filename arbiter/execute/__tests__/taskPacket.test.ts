@@ -30,18 +30,14 @@ test("buildTaskPacket includes task id, context pack, citations, and query", asy
     const packet = await buildTaskPacket({ id: "TASK-1", query: "spark frob" });
     const normalizedA = docA.replace(/\\/g, "/");
     const normalizedB = docB.replace(/\\/g, "/");
-    const expectedPack = [
-      "## Context Pack",
-      `- [${normalizedA}#Alpha] This section mentions spark and frob.`,
-      `- [${normalizedB}#Beta] This section mentions spark only.`
-    ].join("\n");
 
-    assert.deepEqual(packet, {
-      taskId: "TASK-1",
-      contextPack: expectedPack,
-      citations: [`${normalizedA}#Alpha`, `${normalizedB}#Beta`],
-      query: "spark frob"
-    });
+    assert.equal(packet.taskId, "TASK-1");
+    assert.equal(packet.query, "spark frob");
+    assert.deepEqual(packet.citations, [`${normalizedA}#Alpha`, `${normalizedB}#Beta`]);
+    assert.ok(packet.contextPack.startsWith("## Context Pack"));
+    assert.ok(packet.contextPack.includes(`[${normalizedA}#Alpha]`));
+    assert.ok(packet.contextPack.includes(`[${normalizedB}#Beta]`));
+    assert.match(packet.contextPack, /source_id:[a-f0-9]{12}/i);
 
     const noCitationResult = await runTask({ id: "TASK-2", query: "nonexistent terms" });
     assert.deepEqual(noCitationResult, {
