@@ -76,3 +76,25 @@ test("disallowedActions must be empty", () => {
   envelope.candidates[0].disallowedActions = ["execute"];
   expectViolation(() => validateScoutSynthesis(envelope));
 });
+
+test("multiple candidates remain valid when recommendation references one candidate", () => {
+  const envelope = baseEnvelope();
+  envelope.candidates.push({
+    id: "EPIC-2",
+    title: "Execution-ready option",
+    intent: "Ship a concrete task",
+    scope: {
+      included: ["arbiter/run/runEpicAutopilot.ts"],
+      excluded: []
+    },
+    prerequisites: [],
+    estimatedComplexity: "low",
+    artifactsToTouch: ["arbiter/run/runEpicAutopilot.ts"],
+    risks: [],
+    disallowedActions: []
+  });
+  envelope.recommendation.candidateId = "EPIC-2";
+
+  const result = validateScoutSynthesis(envelope);
+  assert.equal(result, envelope);
+});

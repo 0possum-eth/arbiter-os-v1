@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { getRunId } from "../receipts/runContext";
+import { pickBestScoutCandidate } from "./candidateScoring";
 import { assertValidPhaseName, ingestSource, type SourceRecord } from "./sourceIngest";
 
 type PrdEpic = {
@@ -120,6 +121,43 @@ const toTaskStrings = (value: unknown): string[] => {
 const pickEpic = (metadata: PrdMetadata): PrdEpic | undefined =>
   metadata.epic ?? metadata.epics?.[0];
 
+const buildCandidate = (options: {
+  epic: PrdEpic | undefined;
+  index: number;
+  fallbackId: string;
+  fallbackTitle: string;
+  fallbackProblemStatement: string;
+  rootTasks: string[];
+}): ScoutCandidate => {
+  const { epic, index, fallbackId, fallbackTitle, fallbackProblemStatement, rootTasks } = options;
+  const epicId = normalizeString(epic?.id) ?? (index === 0 ? fallbackId : `EPIC-${index + 1}`);
+  const epicTitle = normalizeString(epic?.title) ?? (index === 0 ? fallbackTitle : `Candidate ${index + 1}`);
+  const epicTasks = toTaskStrings(epic?.tasks);
+  const fallbackArtifacts = toStringArray(epic?.scope?.included);
+  const taskStrings = epicTasks.length > 0 ? epicTasks : index === 0 ? rootTasks : [];
+  const artifactsToTouch =
+    taskStrings.length > 0
+      ? taskStrings
+      : fallbackArtifacts.length > 0
+        ? fallbackArtifacts
+        : ["docs/arbiter/reference"];
+
+  return {
+    id: epicId,
+    title: epicTitle,
+    intent: normalizeString(epic?.intent) ?? fallbackProblemStatement,
+    scope: {
+      included: artifactsToTouch,
+      excluded: toStringArray(epic?.scope?.excluded)
+    },
+    prerequisites: [],
+    estimatedComplexity: "low",
+    artifactsToTouch,
+    risks: [],
+    disallowedActions: []
+  };
+};
+
 export async function extractPrd(options: ExtractPrdOptions = {}): Promise<ScoutEnvelope | null> {
   const rootDir = options.baseDir ?? process.cwd();
   const phase = assertValidPhaseName(options.phase ?? "phase-01");
@@ -169,29 +207,34 @@ export async function extractPrd(options: ExtractPrdOptions = {}): Promise<Scout
   const constraints = toStringArray(summary.constraints ?? metadata.constraints);
   const unknowns = toStringArray(summary.unknowns ?? metadata.unknowns);
 
-  const epicTasks = toTaskStrings(epic?.tasks);
   const rootTasks = toTaskStrings(metadata.tasks);
-  const taskStrings = epicTasks.length > 0 ? epicTasks : rootTasks;
-
-  const fallbackArtifacts = toStringArray(epic?.scope?.included);
-  const artifactsToTouch =
-    taskStrings.length > 0
-      ? taskStrings
-      : fallbackArtifacts.length > 0
-        ? fallbackArtifacts
-        : ["docs/arbiter/reference"];
-
-  const scopeIncluded =
-    taskStrings.length > 0
-      ? taskStrings
-      : fallbackArtifacts.length > 0
-        ? fallbackArtifacts
-        : ["docs/arbiter/reference"];
+  const primaryTasks = toTaskStrings(epic?.tasks);
+  const taskStrings = primaryTasks.length > 0 ? primaryTasks : rootTasks;
 
   const constraintsWithTasks =
     taskStrings.length > 0
       ? constraints.concat(taskStrings.map((task) => `task:${task}`))
       : constraints;
+
+  const epicPool =
+    Array.isArray(metadata.epics) && metadata.epics.length > 0
+      ? metadata.epics
+      : epic
+        ? [epic]
+        : [];
+
+  const candidates = (epicPool.length > 0 ? epicPool : [epic]).map((item, index) =>
+    buildCandidate({
+      epic: item,
+      index,
+      fallbackId: epicId,
+      fallbackTitle: epicTitle,
+      fallbackProblemStatement: problemStatement,
+      rootTasks
+    })
+  );
+
+  const recommendedCandidate = pickBestScoutCandidate(candidates, epicId) ?? candidates[0];
 
   const sourceRef = await ingestSource({
     source: prdSource,
@@ -213,25 +256,10 @@ export async function extractPrd(options: ExtractPrdOptions = {}): Promise<Scout
       constraints: constraintsWithTasks,
       unknowns
     },
-    candidates: [
-      {
-        id: epicId,
-        title: epicTitle,
-        intent: normalizeString(epic?.intent) ?? problemStatement,
-        scope: {
-          included: scopeIncluded,
-          excluded: toStringArray(epic?.scope?.excluded)
-        },
-        prerequisites: [],
-        estimatedComplexity: "low",
-        artifactsToTouch,
-        risks: [],
-        disallowedActions: []
-      }
-    ],
+    candidates,
     recommendation: {
-      candidateId: epicId,
-      rationale: "Derived from PRD metadata"
+      candidateId: recommendedCandidate.id,
+      rationale: "Deterministic execution-readiness scoring over PRD candidates"
     }
   };
 }

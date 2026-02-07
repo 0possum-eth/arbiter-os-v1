@@ -4,6 +4,7 @@ import {
   validateScoutSynthesis,
   type ScoutContractViolationError
 } from "../validators/validateScoutSynthesis";
+import { pickBestScoutCandidate } from "../scout/candidateScoring";
 import { queryMemory } from "../memory/query";
 import type { MemoryEntry } from "../memory/store";
 import { activateEpic } from "../state/activateEpic";
@@ -11,7 +12,7 @@ import type { ScoutContractViolationReceipt } from "../receipts/types";
 
 type ArbiterDecisionResult =
   | {
-      status: "OK";
+      status: "PROCEED";
       scoutSynthesis: unknown;
       memoryContext: MemoryEntry[];
     }
@@ -41,9 +42,16 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
       failureMode?: unknown;
     };
 
-    const candidate = scoutSynthesis.candidates.find(
+    const recommendedCandidate = scoutSynthesis.candidates.find(
       (item) => item.id === scoutSynthesis.recommendation.candidateId
     );
+
+    const executionReadyCandidate = pickBestScoutCandidate(
+      scoutSynthesis.candidates,
+      scoutSynthesis.recommendation.candidateId
+    );
+
+    const candidate = executionReadyCandidate ?? recommendedCandidate;
 
     if (!candidate) {
       return {
@@ -70,7 +78,7 @@ export async function arbiterDecision(rawScoutOutput: unknown): Promise<ArbiterD
       .join(" ") || candidate.id;
     const memoryContext = await queryMemory({ scope: "project", query: memoryQuery, limit: 3 });
 
-    return { status: "OK", scoutSynthesis, memoryContext };
+    return { status: "PROCEED", scoutSynthesis, memoryContext };
   } catch (error) {
     if (isScoutContractViolation(error)) {
       return {
