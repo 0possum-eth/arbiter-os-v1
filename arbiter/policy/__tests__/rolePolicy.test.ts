@@ -73,6 +73,18 @@ test("write tools with no targets are denied", () => {
   assert.match(result.reason || "", /requires explicit target paths/i);
 });
 
+test("write tools with unknown payload shapes are denied fail-closed", () => {
+  const result = evaluateRolePolicy({
+    role: "executor",
+    toolName: "writeFile",
+    targets: [],
+    targetExtractionError: "Cannot determine targets for write tool writeFile"
+  });
+
+  assert.equal(result.allowed, false);
+  assert.match(result.reason || "", /unsupported payload shape/i);
+});
+
 test("executor can run write tools with non-ledger targets", () => {
   const result = evaluateRolePolicy({
     role: "executor",

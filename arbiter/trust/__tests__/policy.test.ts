@@ -285,7 +285,30 @@ test("plugin rejects pathless write tools", async () => {
           name: "bash",
           args: { command: "npm test" }
         }),
-      /requires explicit target paths/i
+      /unsupported payload shape/i
+    );
+  } finally {
+    if (originalRole === undefined) {
+      delete process.env.ARBITER_ROLE;
+    } else {
+      process.env.ARBITER_ROLE = originalRole;
+    }
+  }
+});
+
+test("plugin rejects unknown write-tool payload shapes fail-closed", async () => {
+  const originalRole = process.env.ARBITER_ROLE;
+  process.env.ARBITER_ROLE = "executor";
+
+  try {
+    const plugin = await ArbiterOsPlugin();
+    await assert.rejects(
+      () =>
+        plugin["tool.execute.before"]({
+          name: "writeFile",
+          args: { command: "touch docs/arbiter/notes/todo.md" }
+        }),
+      /unsupported payload shape/i
     );
   } finally {
     if (originalRole === undefined) {

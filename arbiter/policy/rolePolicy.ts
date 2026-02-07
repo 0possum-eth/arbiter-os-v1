@@ -1,4 +1,5 @@
 import { isLedgerPath } from "./ledgerGuard";
+import { isWriteToolName } from "./toolTargets";
 
 type RoleRule = {
   writeTools: "allow" | "deny";
@@ -18,26 +19,11 @@ export const ROLE_POLICY_TABLE: Record<string, RoleRule> = {
   "ledger-keeper": { writeTools: "allow", writePathScope: "ledger-only" }
 };
 
-const WRITE_TOOLS = new Set([
-  "write",
-  "writefile",
-  "edit",
-  "delete",
-  "deletefile",
-  "move",
-  "movefile",
-  "rename",
-  "renamefile",
-  "createfile",
-  "applypatch",
-  "apply_patch",
-  "bash"
-]);
-
 type EvaluateRolePolicyInput = {
   role: string;
   toolName?: string;
   targets: string[];
+  targetExtractionError?: string;
 };
 
 type EvaluateRolePolicyResult = {
@@ -52,10 +38,13 @@ const isLedgerOrViewPath = (target: string) => {
   return isLedgerPath(`/${normalized}`) || isLedgerPath(normalized);
 };
 
-const isWriteTool = (toolName: string | undefined) => WRITE_TOOLS.has(normalize(toolName));
-
-export const evaluateRolePolicy = ({ role, toolName, targets }: EvaluateRolePolicyInput): EvaluateRolePolicyResult => {
-  if (!isWriteTool(toolName)) {
+export const evaluateRolePolicy = ({
+  role,
+  toolName,
+  targets,
+  targetExtractionError
+}: EvaluateRolePolicyInput): EvaluateRolePolicyResult => {
+  if (!isWriteToolName(toolName)) {
     return { allowed: true };
   }
 
@@ -66,6 +55,13 @@ export const evaluateRolePolicy = ({ role, toolName, targets }: EvaluateRolePoli
     return {
       allowed: false,
       reason: `Unknown role ${normalizedRole || "unknown"} cannot execute write tool ${toolName || "unknown"}`
+    };
+  }
+
+  if (targetExtractionError) {
+    return {
+      allowed: false,
+      reason: `Write tool ${toolName || "unknown"} has unsupported payload shape: ${targetExtractionError}`
     };
   }
 

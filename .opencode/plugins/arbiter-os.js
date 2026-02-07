@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { getRoleFromEnv } from "../../arbiter/policy/roleContext";
 import { evaluateRolePolicy } from "../../arbiter/policy/rolePolicy";
+import { extractToolTargets } from "../../arbiter/policy/toolTargets";
 import { isTrusted } from "../../arbiter/trust/commands";
 import { canMountForExecution, classifyBrick } from "../../arbiter/trust/policy";
 import { buildCompactionSummary } from "../../arbiter/memory/compactSummary";
@@ -26,28 +27,6 @@ const toMountedDoc = (value) => {
     (item) => typeof item === "string"
   );
   return typeof sourcePath === "string" ? { path: pathValue, sourcePath } : { path: pathValue };
-};
-
-const extractTargets = (input) => {
-  const args = input?.args;
-  if (!args) return [];
-
-  const collected = [];
-  const singlePathKeys = ["path", "filePath", "target", "outputPath", "destination", "dest"];
-  for (const key of singlePathKeys) {
-    if (typeof args[key] === "string") {
-      collected.push(args[key]);
-    }
-  }
-
-  const listPathKeys = ["paths", "files", "targets", "filePaths"];
-  for (const key of listPathKeys) {
-    if (Array.isArray(args[key])) {
-      collected.push(...args[key].filter((item) => typeof item === "string"));
-    }
-  }
-
-  return collected;
 };
 
 const extractMountedDocs = (input) => {
@@ -97,9 +76,20 @@ export const ArbiterOsPlugin = async () => ({
     );
   },
   "tool.execute.before": async (input) => {
-    const targets = extractTargets(input);
+    let targets = [];
+    let targetExtractionError;
+    try {
+      targets = extractToolTargets(input?.name, input?.args);
+    } catch (error) {
+      targetExtractionError = error instanceof Error ? error.message : "Target extraction failed";
+    }
     const role = getRoleFromEnv();
-    const roleDecision = evaluateRolePolicy({ role, toolName: input?.name, targets });
+    const roleDecision = evaluateRolePolicy({
+      role,
+      toolName: input?.name,
+      targets,
+      targetExtractionError
+    });
     if (!roleDecision.allowed) {
       throw new Error(roleDecision.reason || "Role policy denied tool execution");
     }
