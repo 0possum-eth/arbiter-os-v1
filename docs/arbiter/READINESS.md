@@ -72,3 +72,22 @@ Release status is **READY** only when all of the following are true:
 - No legacy runtime references to `plugins/superpowers.js` are present in active paths.
 
 If any condition fails, release status is **BLOCKED** until the failing check is fixed and re-run.
+
+<!-- readiness-metadata:start -->
+## Evidence Metadata
+
+- generatedAt: 2026-02-07T02:01:53.087Z
+- sourceCommit: 881bc47b18e954da6b1303f54777fef9e275da17
+
+### Category Evidence Inputs
+
+- Orchestration kernel & command surface: tests/arbiter/test-command-surface.sh, tests/arbiter/test-execute-plan-routing.sh
+- Execution + verification + done gating: arbiter/verify/verifyReceipts.ts, arbiter/execute/taskRunner.ts
+- Ledger/state architecture: arbiter/ledger/appendEvent.ts, tests/arbiter/test-ledger-replay.sh
+- Trust gating & role isolation: arbiter/trust/policy.ts, .opencode/plugins/arbiter-os.js
+- Retrieval/context quality: arbiter/docs/retrieveBricks.ts, arbiter/librarian/contextPack.ts
+- Memory/continuity: arbiter/memory/query.ts, arbiter/memory/policy.ts
+- Scout/research-to-PRD loop: arbiter/scout/extractPrd.ts, arbiter/decisions/arbiterDecision.ts
+- Install/docs/runtime migration readiness: .opencode/INSTALL.md, tests/arbiter/test-install-windows-target.sh
+
+<!-- readiness-metadata:end -->

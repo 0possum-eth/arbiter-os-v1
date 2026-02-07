@@ -176,6 +176,10 @@ else
 fi
 
 echo ""
+echo "Refreshing readiness evidence metadata..."
+tsx "$REPO_ROOT/scripts/arbiter/recalculate-readiness.ts"
+
+echo ""
 echo "Running readiness documentation gate..."
 if bash "$REPO_ROOT/tests/arbiter/test-doc-links.sh"; then
   echo "Readiness documentation gate passed"
