@@ -51,6 +51,16 @@ powershell -ExecutionPolicy Bypass -File scripts/arbiter/install-opencode.ps1
 
 ## Usage
 
+### Workflow Modes
+
+Arbiter OS supports dual-stack routing profiles:
+
+- `hybrid_guided` (default): prompts for route only when intent is ambiguous
+- `superpowers_core`: routes through Superpowers planning/execution flows first
+- `arbiter_core`: routes directly into Arbiter-first orchestration
+
+Use `workflow-mode` to inspect or set the active profile in a workspace.
+
 ### Arbiter OS
 
 After installation, use Arbiter OS as the orchestration layer:
@@ -58,6 +68,16 @@ After installation, use Arbiter OS as the orchestration layer:
 - Start each cycle with `run-epic`
 - Use trust gating commands (`approve-brick`, `mount-doc`, `list-bricks`) before execution when behavior docs are involved
 - Build task context from indexed references via context packs
+- For first-run without requirements, `run-epic` presents route options instead of assuming implementation tasks
+
+### Dependency Auto-Install
+
+If prerequisites are missing, Arbiter can run assisted install for prerequisites + toolchain after explicit consent.
+
+This assisted auto-install path is optional and consent-gated.
+
+- Missing dependency path returns `HALT_AND_ASK` with install options
+- On consent, install attempts emit `INSTALL_ATTEMPTED` receipts
 
 See full command examples in [docs/arbiter/USAGE.md](../docs/arbiter/USAGE.md).
 

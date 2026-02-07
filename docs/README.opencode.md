@@ -12,6 +12,14 @@ Tell OpenCode:
 Clone https://github.com/0possum-eth/arbiter-os-v1 to ~/.config/opencode/superpowers, then create directory ~/.config/opencode/plugins, then create directory ~/.config/opencode/skills, then symlink ~/.config/opencode/superpowers/.opencode/plugins/arbiter-os.js to ~/.config/opencode/plugins/arbiter-os.js, then symlink ~/.config/opencode/superpowers/skills to ~/.config/opencode/skills/superpowers, then restart opencode.
 ```
 
+After install, set workflow profile with `workflow-mode`:
+
+- `hybrid_guided` (recommended)
+- `superpowers_core`
+- `arbiter_core`
+
+For missing prerequisites, `run-epic` can perform assisted auto-install after explicit consent.
+
 ## Manual Installation
 
 ### Prerequisites

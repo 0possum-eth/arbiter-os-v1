@@ -210,8 +210,17 @@ echo ""
 echo "Running run-epic intake routing gate..."
 if bash "$REPO_ROOT/tests/arbiter/test-run-epic-intake-routing.sh"; then
   echo "Run-epic intake routing gate passed"
+else
+  echo "Run-epic intake routing gate failed"
+  exit 1
+fi
+
+echo ""
+echo "Running install routing guidance gate..."
+if bash "$REPO_ROOT/tests/arbiter/test-install-routing-guidance.sh"; then
+  echo "Install routing guidance gate passed"
   exit 0
 fi
 
-echo "Run-epic intake routing gate failed"
+echo "Install routing guidance gate failed"
 exit 1

@@ -84,7 +84,9 @@ Fetch and follow instructions from https://raw.githubusercontent.com/0possum-eth
 - Default repository target: `https://github.com/0possum-eth/arbiter-os-v1.git`
 - Install with the OpenCode instructions in [Install Steps](.opencode/INSTALL.md#installation-steps)
 - Canonical command entrypoint: [`commands/run-epic.md`](commands/run-epic.md)
+- Workflow profile command: [`commands/workflow-mode.md`](commands/workflow-mode.md)
 - Start orchestration from [run-epic usage](docs/arbiter/USAGE.md#run-epic-usage)
+- Default profile is `hybrid_guided`; use `superpowers_core` or `arbiter_core` when desired
 - Use the [run-epic + trust flow](docs/arbiter/USAGE.md#run-epic--trust-flow) to gate behavior docs with [trust commands](docs/arbiter/USAGE.md#trust-commands)
 - Build and mount retrieval output via [context packs](docs/arbiter/USAGE.md#context-packs)
 
